@@ -278,7 +278,7 @@ input[type="checkbox"]:checked::after{
 .navbar button span{font-size:12px; font-weight:600;}
 
 /* ---- FAB ---- */
-.fab-wrap{position:absolute; right:20px; bottom:calc(84px + var(--sab)); display:flex; flex-direction:column; align-items:flex-end; gap:12px; z-index:40;}
+.fab-wrap{position:absolute; right:20px; bottom:calc(100px + var(--sab)); display:flex; flex-direction:column; align-items:flex-end; gap:12px; z-index:40;}
 .fab{display:flex; align-items:center; gap:10px; height:56px; padding:0 22px; border-radius:var(--shape-lg); background:var(--clr-primary-container); color:var(--clr-on-primary-container); box-shadow:0 4px 12px rgba(0,0,0,.15); font-size:15px; font-weight:600; transition:border-radius var(--dur-s) var(--ease-emph), transform var(--dur-s) var(--ease-emph); animation:fab-in var(--dur-m) var(--ease-emph-decel) both;}
 .fab:active{border-radius:var(--shape-sm); transform:scale(.96);}
 .fab.mini{height:48px; padding:0 18px; background:var(--clr-tertiary-container); color:var(--clr-on-tertiary-container);}
@@ -327,7 +327,7 @@ input[type="checkbox"]:checked::after{
 
 /* ---- snackbar ---- */
 .snackbar-host{position:fixed; left:16px; right:16px; bottom:calc(16px + var(--sab)); z-index:80; display:flex; flex-direction:column; gap:8px; pointer-events:none; transition:bottom var(--dur-m) var(--ease-emph);}
-.snackbar-host.above-fab{bottom:calc(154px + var(--sab));}
+.snackbar-host.above-fab{bottom:calc(170px + var(--sab));}
 .snackbar{background:var(--clr-on-surface); color:var(--clr-surface); border-radius:var(--shape-sm); padding:16px; display:flex; align-items:center; gap:16px; font-size:14px; box-shadow:0 4px 16px rgba(0,0,0,0.2); animation:snack-in var(--dur-m) var(--ease-emph-decel) both; pointer-events:auto;}
 .snackbar button{color:var(--clr-primary-container); font-weight:700; font-size:13px; flex-shrink:0;}
 @keyframes snack-in{from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:translateY(0);}}
@@ -1387,7 +1387,6 @@ function renderDashboard(){
   
   // Per Matkul Progress
   const listCard = el('div','stack gap8 mt8');
-  listCard.appendChild(el('div','txt-title-sm pad-h','Progress Absensi per Kelas'));
   DB.data.matkul.filter(m=>!m.arsip).forEach(m=>{
     const used = absenTerpakaiUntukMatkul(m.id), lim = limitUntukMatkul(m)||1;
     const pct = clamp(used/lim,0,1);
@@ -1449,12 +1448,31 @@ function openDetailProgressMatkul(matkulId) {
         <div class="row gap12">
           <span class="chip ${r.alasan} selected" style="height: 28px; padding: 0 10px; font-size:11px;">${r.alasan.toUpperCase()}</span>
           <button class="btn-icon statelayer btn-quick-edit" data-id="${r.id}" style="width:36px;height:36px;">${svg('edit')}</button>
+          <button class="btn-icon statelayer btn-quick-delete" data-id="${r.id}" style="width:36px;height:36px;color:var(--clr-error);">${svg('trash')}</button>
         </div>
       `;
       $('.btn-quick-edit', card).onclick = (e) => {
         e.stopPropagation();
         closeSheet();
         setTimeout(() => openEditRiwayat(r), 260);
+      };
+      $('.btn-quick-delete', card).onclick = (e) => {
+        e.stopPropagation();
+        showDialog({
+          title: 'Hapus catatan ini?',
+          body: 'Dapat dipulihkan kapan saja lewat menu Baru Saja Dihapus dalam 30 hari.',
+          actions: [
+            { label: 'Batal', style: 'btn-text' },
+            { label: 'Hapus', style: 'btn-filled', onClick: () => {
+              haptic();
+              r.dihapusPada = Date.now();
+              dbSaveDebounced();
+              closeSheet();
+              setTimeout(() => openDetailProgressMatkul(matkulId), 260);
+              showSnackbar('Catatan dihapus');
+            }}
+          ]
+        });
       };
       timeline.appendChild(card);
     });
