@@ -714,7 +714,7 @@ function defaultDB(){
       namaPJdefault:{}, 
       reminderAktif:false 
     },
-    appState:{ sudahOnboarding:false, sesiTerakhirDibuka:null, semesterSelesaiDiakui:false }
+    appState:{ sudahOnboarding:false, sesiTerakhirDibuka:null, semesterSelesaiDiakui:false, absenCommittedTanggal:null, qcBisukanTanggal:null }
   };
 }
 const DB = { data:null };
@@ -1288,8 +1288,8 @@ function obStep5(c){
   const btn = el('button','btn btn-filled statelayer mt16', 'Mulai Sekarang'); btn.style.width='100%'; btn.style.height='52px';
   btn.onclick = ()=>{
     DB.data.appState.sudahOnboarding = true;
+    DB.data.appState.qcBisukanTanggal = todayISO();
     dbSave();
-    try{ sessionStorage.setItem('absenku_qc_shown','1'); }catch(e){}
     NAV.stack = [];
     bootMain();
   };
@@ -1913,6 +1913,7 @@ function renderFlowRecap() {
     body.appendChild(wrap);
     $('#btn-finish-all', wrap).onclick = () => {
       haptic();
+      markAbsenCommittedHariIni();
       navPop();
     };
     return;
@@ -1976,6 +1977,7 @@ function renderFlowRecap() {
     });
 
     dbSaveDebounced();
+    markAbsenCommittedHariIni();
     navPop();
 
     if (!skipWA) {
@@ -2533,26 +2535,50 @@ function popStatusBarLayer(){
    QUICK-CHECK
    ========================================================= */
 function shouldShowQuickCheck(){
-  try{ return sessionStorage.getItem('absenku_qc_shown')!=='1'; }catch(e){ return true; }
+  const today = todayISO();
+  if(DB.data.appState.absenCommittedTanggal === today) return false;
+  if(DB.data.appState.qcBisukanTanggal === today) return false;
+  return true;
+}
+function navPopSilent(){
+  NAV.stack.pop();
+  NAV.suppressNextPopstate = true;
+  try{ history.back(); }catch(e){ NAV.suppressNextPopstate = false; }
+}
+function markAbsenCommittedHariIni(){
+  DB.data.appState.absenCommittedTanggal = todayISO();
+  dbSaveDebounced();
 }
 function renderQuickCheck(){
   const root = $('#scr-quickcheck'); root.innerHTML='';
-  const wrap = el('div','stack scroll-y pad-h'); wrap.style.cssText='flex:1;padding-top:24px;padding-bottom:24px;justify-content:center;align-items:center;text-align:center;';
-  wrap.appendChild(el('h2','txt-headline mt8','Mau absen?'));
-  wrap.appendChild(el('p','txt-body muted mt8','Yuk catat kehadiran kamu hari ini sebelum lanjut buka aplikasi.'));
-  const row = el('div','stack gap12 mt24'); row.style.cssText='width:100%;max-width:340px;';
+  const wrap = el('div','stack scroll-y pad-h'); wrap.style.cssText='flex:1;padding-top:24px;padding-bottom:24px;justify-content:center;align-items:flex-start;text-align:left;';
+  wrap.appendChild(el('h2','txt-display', 'Mau absen?')).style.cssText='font-weight:700;';
+  const sub = el('p','txt-body-lg muted mt12','Yuk catat kehadiran kamu hari ini sebelum lanjut buka aplikasi.');
+  wrap.appendChild(sub);
+  const row = el('div','stack gap12 mt24'); row.style.cssText='width:100%;';
   const btnMau = el('button','btn btn-filled statelayer','Mau'); btnMau.style.width='100%';
-  btnMau.onclick = ()=>{ haptic(); finishQuickCheck(); setTimeout(()=>startAestheticAbsenFlow(),300); };
+  btnMau.onclick = ()=>{
+    haptic();
+    navPopSilent();
+    setTimeout(()=>startAestheticAbsenFlow(), 200);
+  };
   const btnLanjut = el('button','btn btn-outlined statelayer','Lanjut ke Aplikasi'); btnLanjut.style.width='100%';
-  btnLanjut.onclick = ()=> finishQuickCheck();
+  btnLanjut.onclick = ()=> navPop();
   row.appendChild(btnMau); row.appendChild(btnLanjut);
   wrap.appendChild(row);
+  const btnBisukan = el('button','btn-text statelayer mt8','Bisukan pesan ini untuk hari ini'); btnBisukan.style.cssText='align-self:center;color:var(--clr-on-surface-variant);';
+  btnBisukan.onclick = ()=>{
+    haptic();
+    DB.data.appState.qcBisukanTanggal = todayISO();
+    dbSaveDebounced();
+    navPop();
+  };
+  wrap.appendChild(btnBisukan);
   root.appendChild(wrap);
   showScreen('scr-quickcheck');
   navPush({type:'screen', close:()=> finishQuickCheck()});
 }
 function finishQuickCheck(){
-  try{ sessionStorage.setItem('absenku_qc_shown','1'); }catch(e){}
   showScreen('scr-main'); syncActiveTabUI(); renderDashboard();
 }
 
