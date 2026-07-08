@@ -270,7 +270,7 @@ input[type="checkbox"]:checked::after{
 .topbar h1,.topbar h2{flex:1; font-size:22px; font-family:var(--font-display); font-weight:500;}
 
 /* ---- nav bar ---- */
-.navbar{display:flex; height:68px; padding-bottom:var(--sab); background:var(--clr-surface-container); flex-shrink:0; border-top:1.5px solid var(--clr-outline-variant); margin-top:auto;}
+.navbar{display:flex; height:68px; padding-bottom:var(--sab); background:var(--clr-surface-container); flex-shrink:0; margin-top:auto;}
 .navbar button{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:var(--clr-on-surface-variant);}
 .navbar button .navpill{width:56px; height:28px; border-radius:var(--shape-full); display:flex; align-items:center; justify-content:center; transition:background var(--dur-s) var(--ease-emph);}
 .navbar button.active{color:var(--clr-on-surface);}
@@ -2538,28 +2538,16 @@ function shouldShowQuickCheck(){
 }
 function renderQuickCheck(){
   const root = $('#scr-quickcheck'); root.innerHTML='';
-  const wrap = el('div','stack scroll-y pad-h'); wrap.style.cssText='flex:1;padding-top:24px;padding-bottom:24px;';
-  const closeBtn = el('button','btn-icon statelayer', svg('close'));
-  closeBtn.style.cssText='align-self:flex-end;';
-  closeBtn.onclick = skipQuickCheck;
-  wrap.appendChild(closeBtn);
-  wrap.appendChild(el('h2','txt-headline mt8','Mau ngapain hari ini?'));
-  wrap.appendChild(el('p','txt-body muted mt8','Pilih salah satu instruksi cepat untuk memulai harimu.'));
-  const opts = [
-    ['plus','Catat Absen Hari Ini','Kelola absen jatah hari ini', ()=>{ finishQuickCheck(); setTimeout(()=>startAestheticAbsenFlow(),300); }],
-    ['swap','Pindahkan Kuliah','Sesuaikan jam kelas terjadwal', ()=>{ finishQuickCheck(); setTimeout(()=>openPindahJadwalFlow(),300); }],
-    ['home','Langsung ke Dashboard','Buka halaman beranda utama', ()=> finishQuickCheck()],
-    ['medal','Selesaikan Semester Ini','Lihat rangkuman evaluasi presensi', ()=>{ skipQuickCheck(true); showRekapSemester(false); }]
-  ];
-  const grid = el('div','stack gap12 mt16');
-  opts.forEach(([icon,title,desc,fn])=>{
-    const card = el('button','card-outlined statelayer card-pop', '');
-    card.style.cssText='text-align:left;width:100%;display:flex;gap:14px;align-items:flex-start;padding:16px;';
-    card.innerHTML = '<span style="color:var(--clr-primary)">'+svg(icon)+'</span><span class="stack" style="gap:4px;"><span class="txt-title-sm">'+title+'</span><span class="txt-body muted">'+desc+'</span></span>';
-    card.onclick = fn;
-    grid.appendChild(card);
-  });
-  wrap.appendChild(grid);
+  const wrap = el('div','stack scroll-y pad-h'); wrap.style.cssText='flex:1;padding-top:24px;padding-bottom:24px;justify-content:center;align-items:center;text-align:center;';
+  wrap.appendChild(el('h2','txt-headline mt8','Mau absen?'));
+  wrap.appendChild(el('p','txt-body muted mt8','Yuk catat kehadiran kamu hari ini sebelum lanjut buka aplikasi.'));
+  const row = el('div','stack gap12 mt24'); row.style.cssText='width:100%;max-width:340px;';
+  const btnMau = el('button','btn btn-filled statelayer','Mau'); btnMau.style.width='100%';
+  btnMau.onclick = ()=>{ haptic(); finishQuickCheck(); setTimeout(()=>startAestheticAbsenFlow(),300); };
+  const btnLanjut = el('button','btn btn-outlined statelayer','Lanjut ke Aplikasi'); btnLanjut.style.width='100%';
+  btnLanjut.onclick = ()=> finishQuickCheck();
+  row.appendChild(btnMau); row.appendChild(btnLanjut);
+  wrap.appendChild(row);
   root.appendChild(wrap);
   showScreen('scr-quickcheck');
   navPush({type:'screen', close:()=> finishQuickCheck()});
@@ -2568,10 +2556,6 @@ function finishQuickCheck(){
   DB.data.appState.sesiTerakhirDibuka = todayISO();
   dbSave();
   showScreen('scr-main'); syncActiveTabUI(); renderDashboard();
-}
-function skipQuickCheck(fromClose){
-  if(fromClose===true){ DB.data.appState.sesiTerakhirDibuka = todayISO(); dbSave(); return; }
-  navPop();
 }
 
 /* =========================================================
