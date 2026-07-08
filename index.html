@@ -1288,8 +1288,8 @@ function obStep5(c){
   const btn = el('button','btn btn-filled statelayer mt16', 'Mulai Sekarang'); btn.style.width='100%'; btn.style.height='52px';
   btn.onclick = ()=>{
     DB.data.appState.sudahOnboarding = true;
-    DB.data.appState.sesiTerakhirDibuka = todayISO();
     dbSave();
+    try{ sessionStorage.setItem('absenku_qc_shown','1'); }catch(e){}
     NAV.stack = [];
     bootMain();
   };
@@ -2533,8 +2533,7 @@ function popStatusBarLayer(){
    QUICK-CHECK
    ========================================================= */
 function shouldShowQuickCheck(){
-  const last = DB.data.appState.sesiTerakhirDibuka;
-  return last !== todayISO();
+  try{ return sessionStorage.getItem('absenku_qc_shown')!=='1'; }catch(e){ return true; }
 }
 function renderQuickCheck(){
   const root = $('#scr-quickcheck'); root.innerHTML='';
@@ -2553,8 +2552,7 @@ function renderQuickCheck(){
   navPush({type:'screen', close:()=> finishQuickCheck()});
 }
 function finishQuickCheck(){
-  DB.data.appState.sesiTerakhirDibuka = todayISO();
-  dbSave();
+  try{ sessionStorage.setItem('absenku_qc_shown','1'); }catch(e){}
   showScreen('scr-main'); syncActiveTabUI(); renderDashboard();
 }
 
