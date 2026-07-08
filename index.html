@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#7A5230">
+<meta name="theme-color" content="#FFF8F5" id="meta-theme-color">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -36,14 +36,14 @@ html, html[data-color-theme="brown"] {
 
 /* === CYAN LIGHT === */
 html[data-color-theme="cyan"] {
-  --clr-primary:#006684; --clr-on-primary:#FFFFFF; --clr-primary-container:#BFE9FF; --clr-on-primary-container:#001F2A;
-  --clr-secondary:#4D616C; --clr-on-secondary:#FFFFFF; --clr-secondary-container:#D0E6F2; --clr-on-secondary-container:#091E27;
+  --clr-primary:#008484; --clr-on-primary:#FFFFFF; --clr-primary-container:#BFFFFF; --clr-on-primary-container:#002A2A;
+  --clr-secondary:#4D6C6C; --clr-on-secondary:#FFFFFF; --clr-secondary-container:#D0F2F2; --clr-on-secondary-container:#092727;
   --clr-tertiary:#5D5B7D; --clr-on-tertiary:#FFFFFF; --clr-tertiary-container:#E3DFFE; --clr-on-tertiary-container:#1A1836;
   --clr-error:#BA1A1A; --clr-on-error:#FFFFFF; --clr-error-container:#FFDAD6; --clr-on-error-container:#410002;
-  --clr-surface:#F5FAFD; --clr-on-surface:#171C1F; --clr-surface-dim:#D6E3EB;
-  --clr-surface-container:#E9EFF3; --clr-surface-container-low:#F0F5F8; --clr-surface-container-high:#E3E9ED; --clr-surface-container-highest:#DCE3E7;
-  --clr-on-surface-variant:#41484D; --clr-outline:#71787D; --clr-outline-variant:#C1C7CD;
-  --clr-online:#006684; --clr-offline:#4D616C;
+  --clr-surface:#F5FCFD; --clr-on-surface:#171E1F; --clr-surface-dim:#D6E9EB;
+  --clr-surface-container:#E9F2F3; --clr-surface-container-low:#F0F7F8; --clr-surface-container-high:#E3ECED; --clr-surface-container-highest:#DCE6E7;
+  --clr-on-surface-variant:#414C4D; --clr-outline:#717C7D; --clr-outline-variant:#C1CCCD;
+  --clr-online:#008484; --clr-offline:#4D6C6C;
 }
 
 /* === UNGU LIGHT === */
@@ -108,14 +108,14 @@ html[data-theme="dark"], html[data-theme="dark"][data-color-theme="brown"] {
 
 /* === CYAN DARK === */
 html[data-theme="dark"][data-color-theme="cyan"] {
-  --clr-primary:#7CD0FF; --clr-on-primary:#003446; --clr-primary-container:#004C67; --clr-on-primary-container:#BFE9FF;
-  --clr-secondary:#B4CAD6; --clr-on-secondary:#1F333C; --clr-secondary-container:#354A53; --clr-on-secondary-container:#D0E6F2;
+  --clr-primary:#7CFFFF; --clr-on-primary:#004646; --clr-primary-container:#006767; --clr-on-primary-container:#BFFFFF;
+  --clr-secondary:#B4D6D6; --clr-on-secondary:#1F3C3C; --clr-secondary-container:#355353; --clr-on-secondary-container:#D0F2F2;
   --clr-tertiary:#C7C2E9; --clr-on-tertiary:#2E2D4C; --clr-tertiary-container:#454364; --clr-on-tertiary-container:#E3DFFE;
   --clr-error:#FFB4AB; --clr-on-error:#690005; --clr-error-container:#93000A; --clr-on-error-container:#FFDAD6;
-  --clr-surface:#0F1416; --clr-on-surface:#E1E2E5; --clr-surface-dim:#0F1416;
-  --clr-surface-container:#1F2427; --clr-surface-container-low:#171C1E; --clr-surface-container-high:#292F32; --clr-surface-container-highest:#343A3E;
-  --clr-on-surface-variant:#C1C7CD; --clr-outline:#8B9196; --clr-outline-variant:#41484D;
-  --clr-online:#7CD0FF; --clr-offline:#B4CAD6;
+  --clr-surface:#0F1516; --clr-on-surface:#E1E5E5; --clr-surface-dim:#0F1516;
+  --clr-surface-container:#1F2627; --clr-surface-container-low:#171D1E; --clr-surface-container-high:#293132; --clr-surface-container-highest:#343D3E;
+  --clr-on-surface-variant:#C1CCCD; --clr-outline:#8B9196; --clr-outline-variant:#414C4D;
+  --clr-online:#7CFFFF; --clr-offline:#B4D6D6;
 }
 
 /* === UNGU DARK === */
@@ -811,8 +811,10 @@ function openSheet(buildFn, opts){
   const body = $('.sheet-body',sheet);
   buildFn(body, closeSheet);
   container.appendChild(sheet);
+  if(fullscreen) pushStatusBarLayer('--clr-surface-container-high');
   function closeSheet(){
     sheet.classList.remove('show'); scrim.classList.remove('show');
+    if(fullscreen) popStatusBarLayer();
     setTimeout(()=>sheet.remove(),320);
   }
   scrim.classList.add('show');
@@ -829,7 +831,8 @@ function openSidePanel(buildFn){
   const scrim = $('#scrim');
   panel.innerHTML='';
   buildFn(panel, closePanel);
-  function closePanel(){ panel.classList.remove('show'); scrim.classList.remove('show'); }
+  pushStatusBarLayer('--clr-surface-container-high');
+  function closePanel(){ panel.classList.remove('show'); scrim.classList.remove('show'); popStatusBarLayer(); }
   scrim.classList.add('show');
   scrim.onclick = ()=> navPop();
   requestAnimationFrame(()=>panel.classList.add('show'));
@@ -2480,6 +2483,32 @@ function applyTheme(){
   else document.documentElement.removeAttribute('data-theme');
 
   document.documentElement.setAttribute('data-color-theme', color);
+  syncStatusBarColor();
+}
+
+/* =========================================================
+   STATUS BAR COLOR SYNC
+   Keeps the browser/PWA status-bar chrome (meta theme-color)
+   matching whatever surface is actually drawn behind the
+   safe-area padding right now, instead of a hardcoded color.
+   ========================================================= */
+const STATUSBAR_STACK = ['--clr-surface'];
+function resolveCssVar(varName){
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+function syncStatusBarColor(){
+  const varName = STATUSBAR_STACK[STATUSBAR_STACK.length-1] || '--clr-surface';
+  const hex = resolveCssVar(varName);
+  const meta = document.getElementById('meta-theme-color');
+  if(meta && hex) meta.setAttribute('content', hex);
+}
+function pushStatusBarLayer(varName){
+  STATUSBAR_STACK.push(varName);
+  syncStatusBarColor();
+}
+function popStatusBarLayer(){
+  STATUSBAR_STACK.pop();
+  syncStatusBarColor();
 }
 
 /* =========================================================
@@ -2762,4 +2791,3 @@ document.addEventListener('DOMContentLoaded', initApp);
 </script>
 </body>
 </html>
-
