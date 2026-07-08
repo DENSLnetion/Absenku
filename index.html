@@ -710,7 +710,7 @@ function defaultDB(){
       limitAbsenUmum:3, 
       temaMode:'system', 
       colorTheme:'brown', 
-      formatPesanWA:'Halo Kak, selamat pagi/siang/sore.\n\nSaya ingin mengabarkan bahwa hari ini saya berhalangan hadir di perkuliahan Kakak.\n\nNama: {nama}\nNIM: {nim}\nMata Kuliah: {matkul}\nTanggal: {tanggal}\nAlasan: {alasan_kata}\nKeterangan: {keterangan}\n\nTerima kasih banyak atas pengertiannya, Kak.', 
+      formatPesanWA:'Halo Kak, selamat {waktu}.\n\nSaya ingin mengabarkan bahwa hari ini saya berhalangan hadir di perkuliahan Kakak.\n\nNama: {nama}\nNIM: {nim}\nMata Kuliah: {matkul}\nTanggal: {tanggal}\nAlasan: {alasan_kata}\nKeterangan: {keterangan}\n\nTerima kasih banyak atas pengertiannya, Kak.', 
       namaPJdefault:{}, 
       reminderAktif:false 
     },
@@ -952,18 +952,31 @@ function hitungStreak(){
   const diffDays = Math.round((parseISO(todayISO())-parseISO(last))/86400000);
   return Math.max(diffDays,0);
 }
+function greetingWaktu(){
+  const h = new Date().getHours();
+  if(h>=4 && h<11) return 'pagi';
+  if(h>=11 && h<15) return 'siang';
+  if(h>=15 && h<18) return 'sore';
+  return 'malam';
+}
 function generatePesanWA(entries){
   const p = DB.data.profile;
   const tpl = DB.data.settings.formatPesanWA;
   const alasanKata = {izin:'Izin', sakit:'Sakit', bolos:'Tidak Hadir'};
+  const waktu = greetingWaktu();
   if(entries.length===1){
     const e = entries[0];
     const m = matkulById(e.matkulId);
-    return tpl.replace(/{nama}/g,p.nama).replace(/{nim}/g,p.nim).replace(/{matkul}/g, m?m.namaLengkap:'-')
+    let t = tpl;
+    if(!e.keterangan){
+      t = t.split('\n').filter(line => !line.includes('{keterangan}')).join('\n').replace(/\n{3,}/g, '\n\n');
+    }
+    return t.replace(/{nama}/g,p.nama).replace(/{nim}/g,p.nim).replace(/{matkul}/g, m?m.namaLengkap:'-')
       .replace(/{alasan}/g, e.alasan).replace(/{alasan_kata}/g, alasanKata[e.alasan]||e.alasan)
-      .replace(/{tanggal}/g, fmtTanggalPanjang(e.tanggal)).replace(/{keterangan}/g, e.keterangan||'');
+      .replace(/{tanggal}/g, fmtTanggalPanjang(e.tanggal)).replace(/{keterangan}/g, e.keterangan||'')
+      .replace(/{waktu}/g, waktu);
   }
-  let out = 'Assalamualaikum, izin melaporkan ketidakhadiran untuk beberapa kuliah hari ini.\n\n';
+  let out = 'Assalamualaikum, selamat '+waktu+'. Izin melaporkan ketidakhadiran untuk beberapa kuliah hari ini.\n\n';
   out += 'Nama: '+p.nama+'\nNIM: '+p.nim+'\n\n';
   entries.forEach((e,i)=>{
     const m = matkulById(e.matkulId);
@@ -1866,16 +1879,78 @@ function renderQuestionC() {
     haptic();
     FLOW.results[m.id].keterangan = notesArea.value.trim();
     FLOW.history.push(() => renderQuestionC());
-    FLOW.currentIndex++;
-    processCurrentCourse();
+    renderQuestionD();
   };
 
   $('#btn-notes-skip', wrap).onclick = () => {
     haptic();
     FLOW.results[m.id].keterangan = '';
     FLOW.history.push(() => renderQuestionC());
+    renderQuestionD();
+  };
+}
+
+/* ---- QUESTION D: BAGIKAN KE PJ (PER MATKUL) ---- */
+function renderQuestionD() {
+  const index = FLOW.currentIndex;
+  const courseConfig = FLOW.courses[index];
+  const m = matkulById(courseConfig.matkulId);
+  const res = FLOW.results[m.id];
+  const alasanKata = { izin: 'Izin', sakit: 'Sakit', bolos: 'Tidak Hadir' };
+
+  const stepPercent = 45 + Math.round((index / FLOW.courses.length) * 50);
+  renderFlowHeader(`Bagikan (${index + 1}/${FLOW.courses.length})`, stepPercent);
+
+  const body = getFlowBody();
+  const wrap = el('div', 'flow-body-content');
+
+  wrap.innerHTML = `
+    <h1 class="flow-title-large">Bagikan laporan ke PJ kelas <b>${m.namaLengkap}</b>?</h1>
+    <p class="flow-subtitle">${alasanKata[res.alasan] || res.alasan}${res.keterangan ? ' — ' + res.keterangan : ''}</p>
+    
+    <div class="flow-choices-stack">
+      <button class="flow-btn-choice primary statelayer" id="btn-share-pj">
+        ${svg('send')}
+        <span>Bagikan ke PJ</span>
+      </button>
+      <button class="flow-btn-choice tonal statelayer" id="btn-share-skip">
+        <span>Lewati</span>
+        ${svg('arrowR')}
+      </button>
+    </div>
+  `;
+  body.appendChild(wrap);
+
+  const goNext = () => {
+    FLOW.history.push(() => renderQuestionD());
     FLOW.currentIndex++;
     processCurrentCourse();
+  };
+
+  $('#btn-share-pj', wrap).onclick = () => {
+    haptic();
+    res.sudahDikirimWA = true;
+    const text = generatePesanWA([{ matkulId: m.id, alasan: res.alasan, keterangan: res.keterangan, tanggal: todayISO() }]);
+    if (navigator.share) {
+      showDialog({
+        title: 'Kirim laporan izin',
+        body: 'Pilih media pengiriman template presensi kamu.',
+        actions: [
+          { label: 'WhatsApp', style: 'btn-filled', onClick: () => kirimWA(text) },
+          { label: 'Gunakan Sistem Share', style: 'btn-tonal', onClick: () => navigator.share({ text }).catch(() => {}) },
+          { label: 'Nanti Saja', style: 'btn-text' }
+        ]
+      });
+    } else {
+      kirimWA(text);
+    }
+    goNext();
+  };
+
+  $('#btn-share-skip', wrap).onclick = () => {
+    haptic();
+    res.sudahDikirimWA = false;
+    goNext();
   };
 }
 
@@ -1892,7 +1967,8 @@ function renderFlowRecap() {
         courseConfig: j,
         matkulId: j.matkulId,
         alasan: res.alasan,
-        keterangan: res.keterangan
+        keterangan: res.keterangan,
+        sudahDikirimWA: !!res.sudahDikirimWA
       });
     }
   });
@@ -1924,11 +2000,7 @@ function renderFlowRecap() {
     <p class="flow-subtitle">Pastikan semua laporan absen ini sudah tepat sebelum disimpan.</p>
     <div class="stack gap12 mt8" style="width:100%;max-width:320px;" id="recap-list-host"></div>
     <div class="flow-footer-actions" style="margin-top: 16px;">
-      <button class="btn btn-filled statelayer" id="btn-recap-send" style="height:52px;font-size:16px;">
-        ${svg('send')}
-        <span>Kirim ke PJ & Simpan</span>
-      </button>
-      <button class="btn btn-tonal statelayer" id="btn-recap-save" style="height:48px;">Simpan Saja</button>
+      <button class="btn btn-filled statelayer" id="btn-recap-save" style="height:52px;font-size:16px;">Simpan</button>
     </div>
   `;
   body.appendChild(wrap);
@@ -1942,13 +2014,14 @@ function renderFlowRecap() {
       <div class="stack" style="gap:2px;">
         <span class="txt-title-sm" style="font-size:14px;">${m.namaLengkap}</span>
         <span class="txt-body muted" style="font-size:11px;">${a.keterangan || 'Tanpa catatan'}</span>
+        <span class="txt-body muted" style="font-size:10px;color:${a.sudahDikirimWA ? 'var(--clr-primary)' : 'var(--clr-on-surface-variant)'};">${a.sudahDikirimWA ? 'Sudah dibagikan ke PJ' : 'Belum dibagikan ke PJ'}</span>
       </div>
       <span class="chip ${a.alasan} selected" style="pointer-events:none;height:24px;padding: 0 10px;font-size:10px;">${a.alasan.toUpperCase()}</span>
     `;
     host.appendChild(item);
   });
 
-  const saveToDatabase = (skipWA) => {
+  const saveToDatabase = () => {
     const today = todayISO();
     const saveEntries = [];
 
@@ -1961,7 +2034,7 @@ function renderFlowRecap() {
         hari: HARI[todayHariIndex()],
         alasan: a.alasan,
         keterangan: a.keterangan,
-        sudahDikirimWA: !skipWA,
+        sudahDikirimWA: a.sudahDikirimWA,
         waktuDibuat: Date.now(),
         dihapusPada: null,
         overrideId: a.courseConfig.overrideId || null,
@@ -1979,37 +2052,13 @@ function renderFlowRecap() {
     dbSaveDebounced();
     markAbsenCommittedHariIni();
     navPop();
-
-    if (!skipWA) {
-      const text = generatePesanWA(saveEntries);
-      if (navigator.share) {
-        setTimeout(() => {
-          showDialog({
-            title: 'Kirim laporan izin',
-            body: 'Pilih media pengiriman template presensi kamu.',
-            actions: [
-              { label: 'WhatsApp', style: 'btn-filled', onClick: () => kirimWA(text) },
-              { label: 'Gunakan Sistem Share', style: 'btn-tonal', onClick: () => navigator.share({ text }).catch(() => {}) },
-              { label: 'Nanti Saja', style: 'btn-text' }
-            ]
-          });
-        }, 300);
-      } else {
-        setTimeout(() => kirimWA(text), 300);
-      }
-    }
     showSnackbar('Konfigurasi laporan absensi berhasil disimpan!');
     renderDashboard();
   };
 
-  $('#btn-recap-send', wrap).onclick = () => {
-    haptic();
-    saveToDatabase(false);
-  };
-
   $('#btn-recap-save', wrap).onclick = () => {
     haptic();
-    saveToDatabase(true);
+    saveToDatabase();
   };
 }
 
@@ -2390,7 +2439,7 @@ function renderSettingsOverride(){
 }
 function renderSettingsTemplate(){
   settingsSubScreen('Template Format Pesan', (body)=>{
-    body.appendChild(el('div','txt-body muted','Variabel dinamis yang dapat disisipkan: {nama} {nim} {matkul} {alasan} {alasan_kata} {tanggal} {keterangan}'));
+    body.appendChild(el('div','txt-body muted','Variabel dinamis yang dapat disisipkan: {nama} {nim} {matkul} {alasan} {alasan_kata} {tanggal} {keterangan} {waktu}'));
     const ta = el('textarea','m3-input'); ta.style.marginTop='12px'; ta.style.minHeight='180px'; ta.value = DB.data.settings.formatPesanWA;
     body.appendChild(ta);
     const btn = el('button','btn btn-filled statelayer mt16','Simpan Template'); btn.style.width='100%';
