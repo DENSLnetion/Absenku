@@ -1542,6 +1542,7 @@ function startAestheticAbsenFlow() {
   FLOW.results = {};
   FLOW.currentIndex = 0;
   FLOW.history = [];
+  FLOW.uniformEntries = [];
 
   // Pindah layar ke scr-absen-flow
   showScreen('scr-absen-flow');
@@ -1662,7 +1663,15 @@ function renderFlowStep1() {
     processCurrentCourse();
   };
 
-  $('#flow-opt-all', wrap).onclick = () => handleFilterSelection(rawToday);
+  $('#flow-opt-all', wrap).onclick = () => {
+    haptic();
+    if (rawToday.length === 0) {
+      showSnackbar('Tidak ada mata kuliah yang cocok dengan kriteria filter.');
+      return;
+    }
+    FLOW.history.push(() => renderFlowStep1());
+    startUniformAbsenFlow(rawToday);
+  };
   $('#flow-opt-online', wrap).onclick = () => handleFilterSelection(rawToday.filter(j => j.mode === 'online'));
   $('#flow-opt-offline', wrap).onclick = () => handleFilterSelection(rawToday.filter(j => j.mode === 'offline'));
   
@@ -1670,6 +1679,150 @@ function renderFlowStep1() {
     haptic();
     FLOW.history.push(() => renderFlowStep1());
     renderFlowManualSelection();
+  };
+}
+
+/* ---- OPSI "SEMUA KELAS": ABSEN SERAGAM LANGSUNG (2 HALAMAN) ---- */
+function startUniformAbsenFlow(courses) {
+  FLOW.courses = courses;
+  renderUniformReasonPage();
+}
+
+function renderUniformReasonPage() {
+  renderFlowHeader('Absen Semua Kelas', 55);
+  const body = getFlowBody();
+
+  const wrap = el('div', 'flow-body-content');
+  wrap.style.justifyContent = 'flex-start';
+  wrap.style.paddingTop = '16px';
+
+  const listHtml = FLOW.courses.map(j => {
+    const m = matkulById(j.matkulId);
+    return `<div class="card-outlined row between" style="padding:14px;max-width:320px;">
+      <span class="txt-body-lg" style="font-weight:600;">${m ? m.namaLengkap : '-'}</span>
+      <span class="txt-body muted" style="font-size:12px;">${j.jamMulai} - ${j.jamSelesai}</span>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <h1 class="flow-title-large">Absen semua kelas hari ini sebagai apa?</h1>
+    <p class="flow-subtitle">Alasan ini akan diterapkan untuk seluruh ${FLOW.courses.length} kelas di bawah ini sekaligus.</p>
+    <div class="stack gap8 mt8" style="width:100%;max-width:320px;">${listHtml}</div>
+
+    <div class="flow-choices-stack">
+      <button class="flow-btn-choice izin statelayer" id="btn-uniform-izin">
+        <div class="stack" style="text-align:left;gap:2px;">
+          <span style="font-weight:700;">Izin</span>
+          <span style="font-size:11px;font-weight:400;opacity:0.8;">Ada keperluan darurat di luar</span>
+        </div>
+        ${svg('arrowR')}
+      </button>
+      <button class="flow-btn-choice sakit statelayer" id="btn-uniform-sakit">
+        <div class="stack" style="text-align:left;gap:2px;">
+          <span style="font-weight:700;">Sakit</span>
+          <span style="font-size:11px;font-weight:400;opacity:0.8;">Kondisi kesehatan kurang baik</span>
+        </div>
+        ${svg('arrowR')}
+      </button>
+      <button class="flow-btn-choice bolos statelayer" id="btn-uniform-bolos">
+        <div class="stack" style="text-align:left;gap:2px;">
+          <span style="font-weight:700;">Tidak Hadir (Bolos)</span>
+          <span style="font-size:11px;font-weight:400;opacity:0.8;">Tanpa keterangan yang mendesak</span>
+        </div>
+        ${svg('arrowR')}
+      </button>
+    </div>
+  `;
+  body.appendChild(wrap);
+
+  const pick = (alasan) => {
+    haptic();
+    commitUniformAbsen(alasan);
+    FLOW.history.push(() => renderUniformReasonPage());
+    renderUniformSharePage();
+  };
+  $('#btn-uniform-izin', wrap).onclick = () => pick('izin');
+  $('#btn-uniform-sakit', wrap).onclick = () => pick('sakit');
+  $('#btn-uniform-bolos', wrap).onclick = () => pick('bolos');
+}
+
+function commitUniformAbsen(alasan) {
+  const today = todayISO();
+  FLOW.uniformEntries = FLOW.courses.map(j => {
+    const existingIdx = DB.data.riwayatAbsen.findIndex(r => r.matkulId === j.matkulId && r.tanggal === today && !r.dihapusPada);
+    const entry = {
+      id: existingIdx > -1 ? DB.data.riwayatAbsen[existingIdx].id : uid(),
+      matkulId: j.matkulId,
+      tanggal: today,
+      hari: HARI[todayHariIndex()],
+      alasan: alasan,
+      keterangan: '',
+      sudahDikirimWA: false,
+      waktuDibuat: Date.now(),
+      dihapusPada: null,
+      overrideId: j.overrideId || null,
+      pengaliKehadiranSnapshot: j.pengali || 1
+    };
+    if (existingIdx > -1) { DB.data.riwayatAbsen[existingIdx] = entry; }
+    else { DB.data.riwayatAbsen.push(entry); }
+    return entry;
+  });
+  dbSaveDebounced();
+  markAbsenCommittedHariIni();
+}
+
+function renderUniformSharePage() {
+  renderFlowHeader('Bagikan ke PJ', 90);
+  const body = getFlowBody();
+
+  const wrap = el('div', 'flow-body-content');
+  wrap.style.justifyContent = 'flex-start';
+  wrap.style.paddingTop = '16px';
+
+  wrap.innerHTML = `
+    <h1 class="flow-title-large">Bagikan laporan ke PJ</h1>
+    <p class="flow-subtitle">Kirim laporan masing-masing kelas ke PJ kelasnya sendiri-sendiri.</p>
+    <div class="stack gap8 mt8" id="uniform-share-list" style="width:100%;max-width:320px;"></div>
+    <div class="flow-footer-actions" style="margin-top:20px;">
+      <button class="btn btn-filled statelayer" id="btn-uniform-finish" style="height:52px;font-size:16px;">Selesai</button>
+    </div>
+  `;
+  body.appendChild(wrap);
+
+  const host = $('#uniform-share-list', wrap);
+  FLOW.uniformEntries.forEach(entry => {
+    const m = matkulById(entry.matkulId);
+    if (!m) return;
+    const item = el('div', 'card-outlined row between');
+    item.style.padding = '12px 16px';
+    item.innerHTML = `
+      <span class="txt-body-lg" style="font-weight:600;">${m.namaLengkap}</span>
+      <button class="btn-icon statelayer" data-matkul="${m.id}" style="background:var(--clr-primary-container);color:var(--clr-on-primary-container);">${svg('send')}</button>
+    `;
+    const shareBtn = $('button', item);
+    shareBtn.onclick = () => {
+      haptic();
+      const text = generatePesanWA([{ matkulId: entry.matkulId, alasan: entry.alasan, keterangan: entry.keterangan, tanggal: entry.tanggal }]);
+      if (navigator.share) {
+        navigator.share({ text }).catch(() => {});
+      } else {
+        kirimWA(text);
+      }
+      entry.sudahDikirimWA = true;
+      const idx = DB.data.riwayatAbsen.findIndex(r => r.id === entry.id);
+      if (idx > -1) { DB.data.riwayatAbsen[idx].sudahDikirimWA = true; dbSaveDebounced(); }
+      shareBtn.style.background = 'var(--clr-primary)';
+      shareBtn.style.color = 'var(--clr-on-primary)';
+      shareBtn.innerHTML = svg('check');
+    };
+    host.appendChild(item);
+  });
+
+  $('#btn-uniform-finish', wrap).onclick = () => {
+    haptic();
+    navPop();
+    showSnackbar('Konfigurasi laporan absensi berhasil disimpan!');
+    renderDashboard();
   };
 }
 
