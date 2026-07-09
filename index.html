@@ -337,7 +337,7 @@ input[type="checkbox"]:checked::after{
 .badge{display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; border-radius:var(--shape-full); background:var(--clr-error); color:var(--clr-on-error); font-size:11px; font-weight:700;}
 
 /* ---- progress ring ---- */
-.ring-wrap{position:relative; width:160px; height:160px; margin:0 auto;}
+.ring-wrap{position:relative; width:160px; height:160px; margin:0 auto; display:flex; align-items:center; justify-content:center;}
 .ring-wrap svg{transform:rotate(-90deg);}
 .ring-bg{fill:none; stroke:var(--clr-surface-container-highest); stroke-width:14;}
 .ring-fg{fill:none; stroke:var(--clr-primary); stroke-width:14; stroke-linecap:round;}
@@ -2640,7 +2640,7 @@ function showRekapSemester(fromReset){
   riwayatAktif().forEach(r=>{ if(r.alasan==='izin')totalIzin++; else if(r.alasan==='sakit')totalSakit++; else totalBolos++; });
   const budget = hitungBatasAbsenAman();
   const scoreCard = el('div','card mt24');
-  scoreCard.innerHTML = '<div class="ring-wrap">'+ringSVG(budget.persentaseSisa/100,140,12)+'<div class="ring-center"><div class="num">'+budget.persentaseSisa+'%</div><div class="lbl">Sisa Kuota</div></div></div>';
+  scoreCard.innerHTML = '<div class="ring-wrap">'+ringSVG(budget.persentaseSisa/100,160,14)+'<div class="ring-center"><div class="num">'+budget.persentaseSisa+'%</div><div class="lbl">Sisa Kuota</div></div></div>';
   wrap.appendChild(scoreCard);
   const bd = el('div','card mt16');
   bd.innerHTML = '<div class="txt-title-sm">Rincian Berdasarkan Alasan</div>'+
