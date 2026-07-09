@@ -860,6 +860,21 @@ function navPop(fromPopstate){
     NAV.suppressNextPopstate = false;
     return;
   }
+  const top = NAV.stack[NAV.stack.length - 1];
+  if(fromPopstate && top && top.confirmExit && !top._confirmedExit){
+    // Tombol back hardware ditekan: batalkan dulu navigasi historinya (agar user
+    // tetap terlihat di layar ini), lalu tampilkan dialog konfirmasi.
+    try{ history.pushState({absenkuLayer:NAV.stack.length}, ''); }catch(e){}
+    showDialog({
+      title: top.confirmExit.title,
+      body: top.confirmExit.body,
+      actions: [
+        { label: 'Lanjutkan', style: 'btn-text' },
+        { label: 'Keluar', style: 'btn-filled', onClick: () => { top._confirmedExit = true; navPop(); } }
+      ]
+    });
+    return;
+  }
   const layer = NAV.stack.pop();
   if(layer && layer.close) layer.close();
   if(!fromPopstate){
@@ -1693,6 +1708,10 @@ function startAestheticAbsenFlow() {
     close: () => {
       showScreen('scr-main');
       syncActiveTabUI();
+    },
+    confirmExit: {
+      title: 'Batalkan Pengisian?',
+      body: 'Konfigurasi absen yang sedang kamu rancang tidak akan tersimpan.'
     }
   });
 
@@ -1710,7 +1729,7 @@ function renderFlowHeader(stepTitle, stepPercent) {
   header.innerHTML = `
     <button class="btn-icon statelayer" id="flow-back-btn">${svg('back')}</button>
     <span class="txt-title-sm" style="font-family: var(--font-display); font-weight:700; font-size:17px; letter-spacing:-0.1px;">${stepTitle}</span>
-    <button class="btn-icon statelayer" id="flow-close-btn">${svg('close')}</button>
+    <span class="btn-icon" style="visibility:hidden;" aria-hidden="true"></span>
   `;
 
   const TOTAL_DOTS = 6;
@@ -1738,16 +1757,6 @@ function renderFlowHeader(stepTitle, stepPercent) {
     }
   };
 
-  $('#flow-close-btn', header).onclick = () => {
-    showDialog({
-      title: 'Batalkan Pengisian?',
-      body: 'Konfigurasi absen yang sedang kamu rancang tidak akan tersimpan.',
-      actions: [
-        { label: 'Lanjutkan', style: 'btn-text' },
-        { label: 'Keluar', style: 'btn-filled', onClick: () => navPop() }
-      ]
-    });
-  };
 }
 
 function getFlowBody() {
@@ -1768,7 +1777,7 @@ function renderFlowStep1() {
 
   const wrap = el('div', 'flow-body-content');
   wrap.innerHTML = `
-    <h1 class="flow-title-large">Tidak hadir matkul apa saja hari ini?</h1>
+    <h1 class="flow-title-large">Tidak hadir di mata kuliah apa saja hari ini?</h1>
     <div class="flow-grid-2x2">
       <button class="flow-btn-large statelayer" id="flow-opt-all">
         ${svg('calendar')}
@@ -1850,7 +1859,7 @@ function renderUniformReasonPage() {
   }).join('');
 
   wrap.innerHTML = `
-    <h1 class="flow-title-large">Absen semua kelas hari ini sebagai apa?</h1>
+    <h1 class="flow-title-large">Mau absen semua kelas hari ini sebagai apa?</h1>
     <div class="stack gap8 mt8" style="width:100%;max-width:320px;margin:8px auto 0;">${listHtml}</div>
 
     <div class="flow-choices-stack" style="margin-top:16px;">
@@ -1924,7 +1933,7 @@ function renderUniformSharePage() {
   wrap.style.paddingTop = '16px';
 
   wrap.innerHTML = `
-    <h1 class="flow-title-large">Bagikan laporan ke PJ</h1>
+    <h1 class="flow-title-large">Bagikan laporan ketidakhadiran ke PJ</h1>
     <div class="stack gap8 mt8" id="uniform-share-list" style="width:100%;max-width:320px;margin:8px auto 0;"></div>
     <div class="flow-footer-actions" style="margin-top:24px;">
       <button class="btn btn-filled statelayer" id="btn-uniform-finish" style="height:52px;font-size:16px;">Selesai</button>
