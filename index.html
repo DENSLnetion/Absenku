@@ -2064,17 +2064,17 @@ function renderQuestionA() {
   const wrap = el('div', 'flow-body-content');
 
   wrap.innerHTML = `
-    <h1 class="flow-title-large">Apakah kamu absen di kelas <i>${m.namaLengkap}</i> hari ini?</h1>
+    <h1 class="flow-title-large">Apakah kamu hadir di kelas <i>${m.namaLengkap}</i> hari ini?</h1>
     <p class="flow-subtitle">Waktu perkuliahan: ${courseConfig.jamMulai} - ${courseConfig.jamSelesai}</p>
     
     <div class="flow-choices-stack">
-      <button class="flow-btn-choice primary statelayer" id="btn-choice-yes">
-        <span>Ya, Saya Absen</span>
-        ${svg('arrowR')}
-      </button>
       <button class="flow-btn-choice tonal statelayer" id="btn-choice-no">
-        <span>Tidak, Saya Hadir</span>
+        <span>Tidak</span>
         ${svg('check')}
+      </button>
+      <button class="flow-btn-choice primary statelayer" id="btn-choice-yes">
+        <span>Ya</span>
+        ${svg('arrowR')}
       </button>
     </div>
   `;
