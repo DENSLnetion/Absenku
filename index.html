@@ -338,6 +338,67 @@ input[type="checkbox"]:checked::after{
 .fab-wrap.open .fab-main .icon{transform:rotate(135deg);}
 .fab-wrap.open .fab-main{background:var(--clr-secondary-container); color:var(--clr-on-secondary-container);}
 
+/* ==========================================================
+   MATERIAL 3 EXPRESSIVE — Container Transform (FAB Morphing)
+   clip-path .fab-options di-drive lewat custom property
+   --morph-x / --morph-y yang diisi JS dari getBoundingClientRect()
+   tombol FAB utama (lihat override main.onclick di bagian script JS).
+   ========================================================== */
+.fab-options{
+  --morph-x:100%;
+  --morph-y:100%;
+  clip-path:circle(0% at var(--morph-x) var(--morph-y));
+  transition:clip-path 0.5s cubic-bezier(0.2, 0.9, 0.15, 1);
+}
+.fab-wrap.open .fab-options{
+  clip-path:circle(150% at var(--morph-x) var(--morph-y));
+}
+.fab-option{ transform-origin: bottom right; }
+
+/* ==========================================================
+   MATERIAL 3 EXPRESSIVE — Animated Mesh Gradient
+   CARA PAKAI: tambahkan class "mesh-header" pada elemen topbar
+   dashboard atau layar onboarding, contoh:
+     <div class="topbar mesh-header pad-h"> ... </div>
+   Elemen otomatis diberi overflow:hidden lewat class ini agar
+   layer gradient tidak bocor keluar batas elemen.
+   ========================================================== */
+.mesh-header{
+  position:relative;
+  overflow:hidden;
+  isolation:isolate;
+}
+.mesh-header::before{
+  content:'';
+  position:absolute;
+  inset:-25%;
+  z-index:-1;
+  background-image:
+    radial-gradient(at 20% 30%, var(--clr-primary-container) 0px, transparent 55%),
+    radial-gradient(at 80% 20%, var(--clr-tertiary-container) 0px, transparent 50%),
+    radial-gradient(at 30% 80%, var(--clr-secondary-container) 0px, transparent 55%),
+    radial-gradient(at 75% 75%, var(--clr-primary-container) 0px, transparent 45%);
+  filter:blur(30px) saturate(130%);
+  opacity:0.9;
+  animation:mesh-breathe 13s ease-in-out infinite;
+  will-change:transform, background-position;
+}
+@keyframes mesh-breathe{
+  0%{ transform:scale(1) translate(0,0) rotate(0deg); }
+  25%{ transform:scale(1.08) translate(2%,-2%) rotate(2deg); }
+  50%{ transform:scale(1.15) translate(-2%,3%) rotate(-1deg); }
+  75%{ transform:scale(1.08) translate(3%,1%) rotate(1deg); }
+  100%{ transform:scale(1) translate(0,0) rotate(0deg); }
+}
+
+/* ==========================================================
+   MATERIAL 3 EXPRESSIVE — Physics-based Rubber-band & Squish
+   Class .squish-press dan .scroll-rubber di-toggle otomatis oleh
+   fungsi initPhysicsInteractions() di bagian script JS.
+   ========================================================== */
+.squish-press{ transform:scale(0.92) !important; transition:transform 0.2s cubic-bezier(0.2, 0, 0, 1); }
+.scroll-rubber{ transition:transform 0.45s cubic-bezier(0.16, 1.4, 0.4, 1); }
+
 /* ---- scrim + bottom sheet ---- */
 .scrim{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60; opacity:0; pointer-events:none; transition:opacity var(--dur-m) var(--ease-emph);}
 .scrim.show{opacity:1; pointer-events:auto;}
@@ -1770,9 +1831,23 @@ function renderFab(context){
   const main = el('button','fab fab-main statelayer');
   main.innerHTML = svg('plus');
   function collapseFabMenu(){ wrap.classList.remove('open'); fabScrim.classList.remove('show'); }
+
+  /* ---- MATERIAL 3 EXPRESSIVE: Container Transform (FAB Morphing) ----
+     Override: sebelum membuka .fab-options, hitung koordinat tombol FAB
+     utama relatif terhadap .fab-options lalu isi custom property
+     --morph-x / --morph-y agar clip-path "tumbuh" dari titik tombol FAB. */
   main.onclick = ()=>{
     if(wrap.classList.contains('open')){ navPop(); }
-    else{ haptic(30); wrap.classList.add('open'); fabScrim.classList.add('show'); navPush({type:'fabmenu', close:collapseFabMenu}); }
+    else{
+      haptic(30);
+      const mainRect = main.getBoundingClientRect();
+      const optsRect = options.getBoundingClientRect();
+      const originX = (mainRect.left + mainRect.width / 2) - optsRect.left;
+      const originY = (mainRect.top + mainRect.height / 2) - optsRect.top;
+      options.style.setProperty('--morph-x', originX + 'px');
+      options.style.setProperty('--morph-y', originY + 'px');
+      wrap.classList.add('open'); fabScrim.classList.add('show'); navPush({type:'fabmenu', close:collapseFabMenu});
+    }
   };
   fabScrim.onclick = ()=>{ if(wrap.classList.contains('open')) navPop(); };
 
@@ -3694,11 +3769,82 @@ document.addEventListener('pointerdown', (e) => {
   target.appendChild(ripple);
   setTimeout(() => ripple.remove(), 500);
 });
+/* ==========================================================
+   MATERIAL 3 EXPRESSIVE — Physics-based Rubber-band & Squish
+   Panggil initPhysicsInteractions() sekali saat app init
+   (sudah di-hook otomatis di dalam initApp()).
+   ========================================================== */
+function initPhysicsInteractions(){
+  // ---- Squish micro-interaction untuk .statelayer / .btn ----
+  function addSquish(e){
+    const target = e.target.closest('.statelayer, .btn');
+    if(target) target.classList.add('squish-press');
+  }
+  function removeSquish(e){
+    const target = e.target.closest('.statelayer, .btn');
+    if(target) target.classList.remove('squish-press');
+    // fallback: bersihkan semua kalau touch berakhir di luar target (mis. drag keluar)
+    document.querySelectorAll('.squish-press').forEach(elx=>{
+      if(!elx.contains(e.target)) elx.classList.remove('squish-press');
+    });
+  }
+  document.addEventListener('touchstart', addSquish, {passive:true});
+  document.addEventListener('touchend', removeSquish, {passive:true});
+  document.addEventListener('touchcancel', removeSquish, {passive:true});
+
+  // ---- Rubber-band scroll untuk .scroll-y ----
+  document.querySelectorAll('.scroll-y').forEach(scroller=>{
+    let startY = 0;
+    let pulling = false;
+    let dir = 0; // 1 = tarik ke bawah di batas atas, -1 = tarik ke atas di batas bawah
+
+    scroller.addEventListener('touchstart', (e)=>{
+      startY = e.touches[0].clientY;
+      pulling = false;
+      dir = 0;
+    }, {passive:true});
+
+    scroller.addEventListener('touchmove', (e)=>{
+      const atTop = scroller.scrollTop <= 0;
+      const atBottom = (scroller.scrollTop + scroller.clientHeight) >= scroller.scrollHeight - 1;
+      const currentY = e.touches[0].clientY;
+      const deltaY = currentY - startY;
+
+      if(atTop && deltaY > 0){
+        dir = 1; pulling = true;
+      } else if(atBottom && deltaY < 0){
+        dir = -1; pulling = true;
+      } else if(!atTop && !atBottom){
+        pulling = false;
+      }
+
+      if(pulling){
+        const friction = 0.3;
+        const y = deltaY * friction;
+        scroller.classList.remove('scroll-rubber');
+        scroller.style.transform = `translateY(${dir === 1 ? y : y}px)`;
+      }
+    }, {passive:true});
+
+    function snapBack(){
+      if(pulling){
+        scroller.classList.add('scroll-rubber');
+        scroller.style.transform = 'translateY(0px)';
+        pulling = false;
+        setTimeout(()=> scroller.classList.remove('scroll-rubber'), 500);
+      }
+    }
+    scroller.addEventListener('touchend', snapBack, {passive:true});
+    scroller.addEventListener('touchcancel', snapBack, {passive:true});
+  });
+}
+
 function initApp(){
   dbLoad();
   applyTheme();
   wireNav();
   initTabSwipe();
+  initPhysicsInteractions();
   document.querySelectorAll('.scroll-y').forEach(el => {
     el.style.transformOrigin = 'top center';
     el.addEventListener('scroll', () => {
