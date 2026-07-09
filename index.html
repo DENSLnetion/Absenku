@@ -493,7 +493,8 @@ input[type="checkbox"]:checked::after{
   letter-spacing: -1px;
   max-width: 320px;
   width: 100%;
-  min-height: 220px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .flow-title-large b {
   font-weight: 800;
@@ -623,6 +624,29 @@ input[type="checkbox"]:checked::after{
   border-color: transparent;
 }
 
+.flow-btn-choice[disabled] {
+  opacity: .38;
+  pointer-events: none;
+}
+.flow-btn-choice.compact {
+  padding: 12px 22px;
+  min-height: 52px;
+  font-size: 15px;
+}
+.flow-btn-choice.compact.origin-day.tonal {
+  border-color: var(--clr-primary);
+}
+.flow-btn-choice.compact.origin-day.primary {
+  box-shadow: inset 0 0 0 2px var(--clr-primary);
+}
+.pj-origin-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--clr-primary);
+  opacity: .85;
+  margin-left: 2px;
+}
+
 .flow-input-container {
   width: 100%;
   max-width: 320px;
@@ -681,32 +705,14 @@ input[type="checkbox"]:checked::after{
 .onboard-step-container {
   display: flex;
   flex-direction: column;
-  padding: 24px 28px;
+  padding: 16px 20px 0;
   width: 100%;
-  max-width: 360px;
+  max-width: 400px;
   margin: 0 auto;
   gap: 20px;
 }
 .matkul-add-item{border:2px dashed var(--clr-outline); border-radius:var(--shape-lg); padding:18px; display:flex; flex-direction:column; gap:10px; transition: all var(--dur-s) var(--ease-emph);}
 .matkul-add-item:active{background: var(--clr-surface-container-low); transform: scale(0.98);}
-
-/* Onboard progress indicators */
-.onboard-progress {
-  display: flex;
-  gap: 8px;
-  padding: 0 24px;
-  margin-top: 16px;
-}
-.onboard-progress div {
-  flex: 1;
-  height: 6px;
-  background: var(--clr-surface-container-highest);
-  border-radius: var(--shape-full);
-  transition: background var(--dur-m) var(--ease-emph);
-}
-.onboard-progress div.done {
-  background: var(--clr-primary);
-}
 </style>
 </head>
 <body>
@@ -735,6 +741,7 @@ input[type="checkbox"]:checked::after{
   <div id="scr-settings" class="screen"></div>
   <!-- Dedicated Screen for Aesthetic Absen Flow -->
   <div id="scr-absen-flow" class="screen" style="background: var(--clr-surface); overflow: hidden;"></div>
+  <div id="scr-pindah-flow" class="screen" style="background: var(--clr-surface); overflow: hidden;"></div>
 </div>
 <div id="scrim" class="scrim"></div>
 <div id="sheet-container"></div>
@@ -1117,6 +1124,54 @@ function kirimWA(text, nomor){
 }
 
 /* =========================================================
+   FLOW TITLE AUTO-FIT — mastiin judul flow (.flow-title-large)
+   selalu jadi 4-5 baris (ga kurang, ga lebih), biar padding ke
+   subtitle/tombol rapih walau isi teksnya pendek atau panjang.
+   ========================================================= */
+function fitFlowTitle(elm, opts){
+  if(!elm) return;
+  const minLines = (opts && opts.minLines) || 4;
+  const maxLines = (opts && opts.maxLines) || 5;
+  const baseFont = 50, minFont = 22, growCap = 96, step = 1;
+
+  elm.style.fontSize = baseFont + 'px';
+
+  function countLines(){
+    const lh = parseFloat(getComputedStyle(elm).lineHeight) || (parseFloat(getComputedStyle(elm).fontSize) * 1.1);
+    return Math.max(1, Math.round(elm.getBoundingClientRect().height / lh));
+  }
+  function overflowsWidth(){
+    return elm.scrollWidth > elm.clientWidth + 1;
+  }
+
+  let size = baseFont;
+  let n = countLines();
+
+  if(n > maxLines){
+    while(n > maxLines && size > minFont){
+      size -= step;
+      elm.style.fontSize = size + 'px';
+      n = countLines();
+    }
+  } else if(n < minLines){
+    while(n < minLines && size < growCap){
+      const prevSize = size;
+      size += step;
+      elm.style.fontSize = size + 'px';
+      if(overflowsWidth()){
+        size = prevSize;
+        elm.style.fontSize = size + 'px';
+        break;
+      }
+      n = countLines();
+    }
+  }
+}
+function fitFlowTitles(scope){
+  $$('.flow-title-large', scope).forEach(t => fitFlowTitle(t));
+}
+
+/* =========================================================
    ONBOARDING — INTUITIVE STEP BY STEP
    ========================================================= */
 const OB = { step:1, totalSteps:5, tempMatkul:[], editSemesterMode:null, editEstimasiSource:null, editMode:false };
@@ -1141,11 +1196,17 @@ function renderOnboarding(){
   const root = $('#scr-onboarding');
   root.innerHTML='';
   const wrap = el('div','stack'); wrap.style.cssText='flex:1;overflow:hidden;';
-  const prog = el('div','onboard-progress');
-  for(let i=1;i<=OB.totalSteps;i++){ const d=el('div'); if(i<=OB.step) d.classList.add('done'); prog.appendChild(d); }
-  wrap.appendChild(prog);
-  const body = el('div','scroll-y'); body.style.paddingTop='16px'; body.style.paddingBottom='24px';
+  const body = el('div','scroll-y'); body.style.paddingTop='24px'; body.style.paddingBottom='16px'; body.style.flex='1';
   wrap.appendChild(body);
+
+  // Capsule pill progress indicator — sama persis dengan wizard "tambah absen"
+  const indicators = el('div','flow-capsule-indicators');
+  for(let i=1;i<=OB.totalSteps;i++){
+    const cls = 'flow-capsule-dot' + (i < OB.step ? ' done' : '') + (i === OB.step ? ' active' : '');
+    indicators.appendChild(el('div', cls));
+  }
+  wrap.appendChild(indicators);
+
   root.appendChild(wrap);
   if(OB.step===1) obStep1(body);
   else if(OB.step===2) obStep2(body);
@@ -1157,11 +1218,15 @@ function stepFooterOnboard(container, onNext, nextLabel, disabled){
   const foot = el('div','row gap12 mt24');
   foot.style.width = '100%';
   if(OB.step>1){
-    const back = el('button','btn btn-outlined', 'Balik');
+    const back = el('button','flow-btn-choice compact tonal statelayer');
+    back.style.cssText = 'flex:0 0 auto;width:auto;min-width:112px;';
+    back.innerHTML = '<span>Balik</span>';
     back.onclick = ()=> navPop();
     foot.appendChild(back);
   }
-  const next = el('button','btn btn-filled statelayer', nextLabel||'Lanjut'); next.style.flex='1';
+  const next = el('button','flow-btn-choice compact primary statelayer');
+  next.style.cssText = 'flex:1;width:auto;';
+  next.innerHTML = '<span>'+(nextLabel||'Lanjut')+'</span>'+svg('arrowR');
   if(disabled) next.setAttribute('disabled','');
   next.onclick = onNext;
   foot.appendChild(next);
@@ -1170,11 +1235,12 @@ function stepFooterOnboard(container, onNext, nextLabel, disabled){
 function obStep1(c){
   const wrap = el('div', 'onboard-step-container animate-slide-up');
   wrap.innerHTML = `
-    <h2 class="flow-title-large">Kenalan dulu, yuk</h2>
+    <h2 class="flow-title-large">Sebelum mulai, kenalan dulu yuk</h2>
     <p class="flow-subtitle">Data ini bakal dipakai buat sapaan otomatis dan format pesan izin ke PJ Kuliah.</p>
     <div class="stack gap16 mt12" id="ob-form-fields" style="width:100%;"></div>
   `;
   c.appendChild(wrap);
+  fitFlowTitle($('.flow-title-large', wrap));
   
   const p = DB.data.profile;
   const fields = [
@@ -1240,6 +1306,7 @@ function obStep2(c){
     </div>
   `;
   c.appendChild(wrap);
+  fitFlowTitle($('.flow-title-large', wrap));
   
   const seg = $('#ob-sem-seg', wrap);
   const areaAwal = $('#ob-sem-area-awal', wrap);
@@ -1312,11 +1379,12 @@ function obStep2(c){
 function obStep3(c){
   const wrap = el('div', 'onboard-step-container animate-slide-up');
   wrap.innerHTML = `
-    <h2 class="flow-title-large">Mata kuliah semester ini</h2>
+    <h2 class="flow-title-large">Mata kuliah yang kamu ambil semester ini</h2>
     <p class="flow-subtitle">Tambahkan satu persatu kelas yang kamu jalani saat ini.</p>
     <div class="stack gap12 mt12" id="ob-matkul-list" style="width:100%;"></div>
   `;
   c.appendChild(wrap);
+  fitFlowTitle($('.flow-title-large', wrap));
   const list = $('#ob-matkul-list', wrap);
   
   function renderList(){
@@ -1377,7 +1445,7 @@ function openTambahMatkulSheet(onAdd){
 function obStep4(c){
   const wrap = el('div', 'onboard-step-container animate-slide-up');
   wrap.innerHTML = `
-    <h2 class="flow-title-large">Aturan absen kamu</h2>
+    <h2 class="flow-title-large">Gimana aturan absen di kampus kamu?</h2>
     <p class="flow-subtitle">Berapa batas maksimal tidak masuk kuliah di kampus kamu?</p>
     <div class="field mt12" style="width:100%;">
       <label>Limit Absen Umum (Bawaan)</label>
@@ -1390,6 +1458,7 @@ function obStep4(c){
     <div id="ob-exc-area" class="stack gap12 mt12 hidden" style="width:100%;"></div>
   `;
   c.appendChild(wrap);
+  fitFlowTitle($('.flow-title-large', wrap));
   
   const inp = $('#ob-limit-val', wrap);
   const excArea = $('#ob-exc-area', wrap);
@@ -1424,11 +1493,12 @@ function obStep4(c){
 function obStep5(c){
   const wrap = el('div', 'onboard-step-container animate-slide-up');
   wrap.innerHTML = `
-    <h2 class="flow-title-large">Semua siap!</h2>
+    <h2 class="flow-title-large">Semua data kamu udah siap, langsung gas!</h2>
     <p class="flow-subtitle">Mari cek kembali data kamu sebelum masuk aplikasi.</p>
     <div class="stack gap12 mt8" id="ob-recap-host" style="width:100%;"></div>
   `;
   c.appendChild(wrap);
+  fitFlowTitle($('.flow-title-large', wrap));
   const host = $('#ob-recap-host', wrap);
   const p = DB.data.profile;
   
@@ -1454,7 +1524,8 @@ function obStep5(c){
   s3.querySelector('#edit3').onclick=()=>obEditStep(3);
   s4.querySelector('#edit4').onclick=()=>obEditStep(4);
   
-  const btn = el('button','btn btn-filled statelayer mt16', 'Mulai Sekarang'); btn.style.width='100%'; btn.style.height='52px';
+  const btn = el('button','flow-btn-choice primary statelayer mt16'); btn.style.width='100%';
+  btn.innerHTML = '<span>Mulai Sekarang</span>'+svg('arrowR');
   btn.onclick = ()=>{
     DB.data.appState.sudahOnboarding = true;
     DB.data.appState.qcBisukanTanggal = todayISO();
@@ -1730,9 +1801,10 @@ function startAestheticAbsenFlow() {
   renderFlowStep1();
 }
 
-function renderFlowHeader(stepTitle, stepPercent) {
-  const root = $('#scr-absen-flow');
-  
+function renderFlowHeader(stepTitle, stepPercent, ctx) {
+  ctx = ctx || { screenId: 'scr-absen-flow', history: FLOW.history };
+  const root = $('#'+ctx.screenId);
+
   let header = $('.flow-header', root);
   if (!header) {
     header = el('div', 'flow-header');
@@ -1760,9 +1832,9 @@ function renderFlowHeader(stepTitle, stepPercent) {
 
   // Bind Buttons
   $('#flow-back-btn', header).onclick = () => {
-    if (FLOW.history.length > 0) {
+    if (ctx.history.length > 0) {
       haptic(20);
-      const prevStep = FLOW.history.pop();
+      const prevStep = ctx.history.pop();
       prevStep();
     } else {
       navPop();
@@ -1771,8 +1843,9 @@ function renderFlowHeader(stepTitle, stepPercent) {
 
 }
 
-function getFlowBody() {
-  const root = $('#scr-absen-flow');
+function getFlowBody(ctx) {
+  ctx = ctx || { screenId: 'scr-absen-flow' };
+  const root = $('#'+ctx.screenId);
   let body = $('.flow-body', root);
   if (!body) {
     body = el('div', 'flow-body');
@@ -2091,6 +2164,7 @@ function renderQuestionA() {
     </div>
   `;
   body.appendChild(wrap);
+  fitFlowTitle($('.flow-title-large', wrap));
 
   $('#btn-choice-tidak', wrap).onclick = () => {
     haptic();
@@ -2371,49 +2445,365 @@ function renderFlowRecap() {
   };
 }
 
-/* ---- PINDAH JADWAL ---- */
+/* =========================================================
+   PINDAH JADWAL — WIZARD STEP-BY-STEP (setara dengan wizard Tambah Absen)
+   ========================================================= */
+const PJ = {
+  matkulId: null,
+  hariBaru: null,
+  jamMulai: '08:00',
+  jamSelesai: '10:00',
+  tanggalBerlaku: null,
+  durasi: 'mingguIni',
+  pengaliAktif: false,
+  pengaliKehadiran: 2,
+  history: []
+};
+const PJ_CTX = { screenId: 'scr-pindah-flow', history: PJ.history };
+const PJ_DUR_OPTS = [
+  ['mingguIni', 'Cuma Minggu Ini', 'Berlaku sekali saja untuk minggu ini'],
+  ['duaMinggu', 'Minggu Ini + Depan', 'Berlaku 2 minggu berturut-turut'],
+  ['permanen', 'Permanen', 'Berlaku seterusnya sampai diubah lagi'],
+  ['double', 'Jadwal Tambahan', 'Nambah kelas, bukan gantikan yang lama']
+];
+
 function openPindahJadwalFlow(){
-  openSheet((body)=>{
-    body.appendChild(el('h3','txt-title mt8','Pindahkan Jadwal Kuliah'));
-    const selWrap = el('div','field mt16'); selWrap.innerHTML='<label>Pilih Kelas</label>';
-    const sel = el('select'); DB.data.matkul.filter(m=>!m.arsip).forEach(m=>{ const o=el('option'); o.value=m.id; o.textContent=m.namaLengkap+' ('+m.hari+')'; sel.appendChild(o); });
-    selWrap.appendChild(sel); body.appendChild(selWrap);
-    const hariWrap = el('div','field mt12'); hariWrap.innerHTML='<label>Hari Baru</label>';
-    const selHari = el('select'); HARI.slice(1).concat(HARI[0]).forEach(h=>{ const o=el('option'); o.value=h; o.textContent=h; selHari.appendChild(o); });
-    hariWrap.appendChild(selHari); body.appendChild(hariWrap);
-    const jamRow = el('div','row gap12 mt12');
-    const fj1=el('div','field'); fj1.style.flex='1'; fj1.innerHTML='<label>Jam Mulai</label>'; const inpJ1=el('input'); inpJ1.type='time'; inpJ1.value='08:00'; fj1.appendChild(inpJ1);
-    const fj2=el('div','field'); fj2.style.flex='1'; fj2.innerHTML='<label>Jam Selesai</label>'; const inpJ2=el('input'); inpJ2.type='time'; inpJ2.value='10:00'; fj2.appendChild(inpJ2);
-    jamRow.appendChild(fj1); jamRow.appendChild(fj2); body.appendChild(jamRow);
-    const tglWrap = el('div','field mt12'); tglWrap.innerHTML='<label>Tanggal Mulai Berlaku</label>'; const inpTgl=el('input'); inpTgl.type='date'; inpTgl.value=todayISO(); tglWrap.appendChild(inpTgl); body.appendChild(tglWrap);
-    const durWrap = el('div','field mt12'); durWrap.innerHTML='<label>Durasi Berlaku</label>';
-    const durSeg = el('div','stack gap8');
-    const durOpts = [['mingguIni','Cuma minggu ini'],['duaMinggu','Minggu ini + minggu depan'],['permanen','Permanen (Seterusnya)'],['double','Jadwal Tambahan (Double Kelas)']];
-    let durasi='mingguIni';
-    durOpts.forEach(([v,label])=>{
-      const b = el('button','chip'+(v==='mingguIni'?' selected':''),label); b.style.width='100%'; b.style.justifyContent='flex-start';
-      b.onclick=()=>{ durasi=v; $$('button',durSeg).forEach(x=>x.classList.remove('selected')); b.classList.add('selected'); };
-      durSeg.appendChild(b);
-    });
-    durWrap.appendChild(durSeg); body.appendChild(durWrap);
-    const pengaliWrap = el('div','row gap8 mt12'); pengaliWrap.innerHTML='<input type="checkbox" id="pengali-chk" style="width:24px;height:24px;"><label for="pengali-chk" class="txt-body" style="font-weight:600;padding-left:4px;">Pertemuan ini setara lebih dari 1 kehadiran</label>';
-    body.appendChild(pengaliWrap);
-    const pengaliInpWrap = el('div','field mt8 hidden'); pengaliInpWrap.innerHTML='<label>Setara berapa kehadiran</label>'; const pengaliInp=el('input'); pengaliInp.type='number'; pengaliInp.min=1; pengaliInp.value=2; pengaliInpWrap.appendChild(pengaliInp); body.appendChild(pengaliInpWrap);
-    $('#pengali-chk',pengaliWrap).addEventListener('change', e=> pengaliInpWrap.classList.toggle('hidden', !e.target.checked));
-    const btn = el('button','btn btn-filled statelayer mt24','Simpan Jadwal Baru'); btn.style.width='100%';
-    btn.onclick = ()=>{
-      if(hmToMin(inpJ2.value)<=hmToMin(inpJ1.value)){ showSnackbar('Jam selesai harus lebih telat dari jam mulai'); return; }
-      const m = matkulById(sel.value);
-      const bentrok = DB.data.matkul.some(o=> o.id!==m.id && o.hari===selHari.value && jamBentrok({hari:selHari.value,jamMulai:inpJ1.value,jamSelesai:inpJ2.value},{hari:o.hari,jamMulai:o.jamMulai,jamSelesai:o.jamSelesai}));
-      const save = ()=>{
-        DB.data.jadwalOverride.push({ id:uid(), matkulId:m.id, tanggalBerlaku:inpTgl.value, hariBaru:selHari.value, jamBaruMulai:inpJ1.value, jamBaruSelesai:inpJ2.value, tipeDurasi:durasi, pengaliKehadiran:$('#pengali-chk').checked?Number(pengaliInp.value):1, status:'aktif' });
-        dbSaveDebounced(); haptic(); navPop(); showSnackbar('Jadwal baru berhasil disimpan'); renderDashboard();
-      };
-      if(bentrok){ showDialog({title:'Jadwal bentrok', body:'Ada kelas terjadwal lain di jam yang sama. Tetap ingin memindahkan?', actions:[{label:'Batal',style:'btn-text'},{label:'Tetap Simpan',style:'btn-filled',onClick:save}]}); }
-      else save();
+  const kelasAktif = DB.data.matkul.filter(m => !m.arsip);
+  if(kelasAktif.length === 0){
+    showSnackbar('Belum ada mata kuliah terdaftar.');
+    return;
+  }
+  PJ.matkulId = null;
+  PJ.hariBaru = null;
+  PJ.jamMulai = '08:00';
+  PJ.jamSelesai = '10:00';
+  PJ.tanggalBerlaku = todayISO();
+  PJ.durasi = 'mingguIni';
+  PJ.pengaliAktif = false;
+  PJ.pengaliKehadiran = 2;
+  PJ.history.length = 0;
+
+  showScreen('scr-pindah-flow');
+  navPush({
+    type: 'pindah-flow',
+    close: () => { showScreen('scr-main'); syncActiveTabUI(); },
+    confirmExit: {
+      title: 'Batalkan Pemindahan?',
+      body: 'Pengaturan jadwal baru yang sedang kamu rancang tidak akan tersimpan.'
+    }
+  });
+
+  renderPJStep1();
+}
+
+/* ---- STEP 1: PILIH KELAS ---- */
+function renderPJStep1(){
+  renderFlowHeader('Pindah Jadwal', 8, PJ_CTX);
+  const body = getFlowBody(PJ_CTX);
+  const wrap = el('div', 'flow-body-content');
+  wrap.style.justifyContent = 'flex-start';
+  wrap.style.paddingTop = '16px';
+
+  const kelasAktif = DB.data.matkul.filter(m => !m.arsip);
+  wrap.innerHTML = `
+    <h1 class="flow-title-large">Kelas mana yang mau dipindah?</h1>
+    <div class="stack gap12 mt8" style="width:100%;max-width:320px;margin:8px auto 0;" id="pj-kelas-host"></div>
+    <div class="flow-footer-actions">
+      <button class="btn btn-filled statelayer" id="pj-step1-next" style="height:52px;font-size:16px;">Lanjut</button>
+    </div>
+  `;
+  body.appendChild(wrap);
+  fitFlowTitle($('.flow-title-large', wrap));
+
+  const host = $('#pj-kelas-host', wrap);
+  kelasAktif.forEach(m => {
+    const item = el('div', 'card-outlined row between statelayer');
+    item.style.cssText = 'cursor:pointer;padding:14px 18px;border-width:2px;';
+    item.dataset.id = m.id;
+    item.innerHTML = `
+      <div class="stack" style="gap:2px;">
+        <span class="txt-body-lg" style="font-weight:700;">${m.namaLengkap}</span>
+        <span class="txt-body muted" style="font-size:12.5px;font-weight:500;">${m.hari}, ${m.jamMulai}-${m.jamSelesai}</span>
+      </div>
+      <span class="pj-check" style="opacity:0;color:var(--clr-primary);">${svg('check')}</span>
+    `;
+    item.onclick = () => {
+      haptic();
+      PJ.matkulId = m.id;
+      $$('.card-outlined', host).forEach(x => { x.style.borderColor = 'var(--clr-outline-variant)'; x.style.background = 'var(--clr-surface)'; $('.pj-check', x).style.opacity = '0'; });
+      item.style.borderColor = 'var(--clr-primary)';
+      item.style.background = 'var(--clr-primary-container)';
+      $('.pj-check', item).style.opacity = '1';
     };
-    body.appendChild(btn);
-  },{title:'Pindah Jadwal', fullscreen:true});
+    host.appendChild(item);
+  });
+
+  $('#pj-step1-next', wrap).onclick = () => {
+    if(!PJ.matkulId){ showSnackbar('Pilih dulu kelas yang mau dipindah'); return; }
+    haptic();
+    const m = matkulById(PJ.matkulId);
+    PJ.hariBaru = m.hari; PJ.jamMulai = m.jamMulai; PJ.jamSelesai = m.jamSelesai;
+    PJ.history.push(() => renderPJStep1());
+    renderPJStep2();
+  };
+}
+
+/* ---- STEP 2: PILIH HARI BARU ---- */
+function renderPJStep2(){
+  const m = matkulById(PJ.matkulId);
+  renderFlowHeader('Hari Baru', 24, PJ_CTX);
+  const body = getFlowBody(PJ_CTX);
+  const wrap = el('div', 'flow-body-content');
+  wrap.style.justifyContent = 'flex-start';
+  wrap.style.paddingTop = '16px';
+
+  let selected = PJ.hariBaru || m.hari;
+
+  const hariUrut = HARI.slice(1).concat(HARI[0]);
+  function renderHariButtonInner(h){
+    const isOrigin = h === m.hari;
+    return '<span>'+h+(isOrigin ? ' <span class="pj-origin-tag">· asal</span>' : '')+'</span>' + (h === selected ? svg('check') : '');
+  }
+  function hariBtnClass(h){
+    const isOrigin = h === m.hari;
+    return 'flow-btn-choice compact ' + (h === selected ? 'primary' : 'tonal') + (isOrigin ? ' origin-day' : '');
+  }
+  const listHtml = hariUrut.map(h => `
+    <button class="${hariBtnClass(h)}" data-h="${h}">
+      ${renderHariButtonInner(h)}
+    </button>
+  `).join('');
+
+  wrap.innerHTML = `
+    <h1 class="flow-title-large">Kelas <i>${m.namaLengkap}</i> pindahnya ke hari apa nih?</h1>
+    <p class="flow-subtitle">Kelas <b>${m.namaLengkap}</b> biasanya di hari ${m.hari}.</p>
+    <div class="flow-choices-stack" style="gap:8px;max-height:100%;">${listHtml}</div>
+    <div class="flow-footer-actions">
+      <button class="flow-btn-choice primary statelayer" id="pj-confirm-hari" style="justify-content:center;text-align:center;">
+        <span id="pj-confirm-hari-label"></span>
+      </button>
+    </div>
+  `;
+  body.appendChild(wrap);
+  fitFlowTitle($('.flow-title-large', wrap));
+
+  const confirmLabel = $('#pj-confirm-hari-label', wrap);
+  function updateConfirmLabel(){
+    confirmLabel.textContent = (selected === m.hari)
+      ? 'Tetap di hari ' + m.hari
+      : 'Pindah dari ' + m.hari + ' ke ' + selected;
+  }
+  updateConfirmLabel();
+
+  $$('.flow-btn-choice[data-h]', wrap).forEach(btn => {
+    btn.onclick = () => {
+      haptic();
+      selected = btn.dataset.h;
+      $$('.flow-btn-choice[data-h]', wrap).forEach(x => {
+        const active = x.dataset.h === selected;
+        x.classList.toggle('primary', active);
+        x.classList.toggle('tonal', !active);
+        x.innerHTML = renderHariButtonInner(x.dataset.h);
+      });
+      updateConfirmLabel();
+    };
+  });
+
+  $('#pj-confirm-hari', wrap).onclick = () => {
+    haptic();
+    PJ.hariBaru = selected;
+    PJ.history.push(() => renderPJStep2());
+    renderPJStep3();
+  };
+}
+
+/* ---- STEP 3: ATUR JAM BARU ---- */
+function renderPJStep3(){
+  renderFlowHeader('Jam Baru', 42, PJ_CTX);
+  const body = getFlowBody(PJ_CTX);
+  const wrap = el('div', 'flow-body-content');
+  wrap.style.justifyContent = 'flex-start';
+  wrap.style.paddingTop = '16px';
+
+  wrap.innerHTML = `
+    <h1 class="flow-title-large">Jam berapa kelasnya yang baru, nih?</h1>
+    <p class="flow-subtitle">Atur jam mulai dan jam selesai untuk jadwal barunya.</p>
+    <div class="flow-input-container">
+      <div class="row gap12">
+        <div class="field" style="flex:1;"><label>Jam Mulai</label><input type="time" id="pj-jam1" value="${PJ.jamMulai}"></div>
+        <div class="field" style="flex:1;"><label>Jam Selesai</label><input type="time" id="pj-jam2" value="${PJ.jamSelesai}"></div>
+      </div>
+      <div class="flow-footer-actions">
+        <button class="btn btn-filled statelayer" id="pj-step3-next" style="height:52px;font-size:16px;">Lanjut</button>
+      </div>
+    </div>
+  `;
+  body.appendChild(wrap);
+  fitFlowTitle($('.flow-title-large', wrap));
+
+  $('#pj-step3-next', wrap).onclick = () => {
+    const j1 = $('#pj-jam1', wrap).value, j2 = $('#pj-jam2', wrap).value;
+    if(hmToMin(j2) <= hmToMin(j1)){ showSnackbar('Jam selesai harus lebih telat dari jam mulai'); return; }
+    haptic();
+    PJ.jamMulai = j1; PJ.jamSelesai = j2;
+    PJ.history.push(() => renderPJStep3());
+    renderPJStep4();
+  };
+}
+
+/* ---- STEP 4: TANGGAL MULAI & DURASI BERLAKU ---- */
+function renderPJStep4(){
+  renderFlowHeader('Durasi Berlaku', 58, PJ_CTX);
+  const body = getFlowBody(PJ_CTX);
+  const wrap = el('div', 'flow-body-content');
+  wrap.style.justifyContent = 'flex-start';
+  wrap.style.paddingTop = '16px';
+
+  const durHtml = PJ_DUR_OPTS.map(([v, label, desc]) => `
+    <button class="flow-btn-choice ${v === PJ.durasi ? 'primary' : 'tonal'} statelayer" data-v="${v}">
+      <div class="stack" style="text-align:left;gap:2px;">
+        <span style="font-weight:700;">${label}</span>
+        <span style="font-size:11px;font-weight:500;opacity:0.8;">${desc}</span>
+      </div>
+      ${svg('arrowR')}
+    </button>
+  `).join('');
+
+  wrap.innerHTML = `
+    <h1 class="flow-title-large">Perubahan ini berlaku mulai kapan?</h1>
+    <div class="flow-input-container" style="margin-top:0;">
+      <div class="field"><label>Tanggal Mulai Berlaku</label><input type="date" id="pj-tanggal" value="${PJ.tanggalBerlaku || todayISO()}"></div>
+    </div>
+    <p class="flow-subtitle" style="margin-top:20px;">Berapa lama perubahan ini berlaku?</p>
+    <div class="flow-choices-stack" style="gap:10px;">${durHtml}</div>
+  `;
+  body.appendChild(wrap);
+  fitFlowTitle($('.flow-title-large', wrap));
+
+  $$('.flow-btn-choice', wrap).forEach(btn => {
+    btn.onclick = () => {
+      const tgl = $('#pj-tanggal', wrap).value;
+      if(!tgl){ showSnackbar('Tentukan dulu tanggal mulai berlaku'); return; }
+      haptic();
+      PJ.tanggalBerlaku = tgl;
+      PJ.durasi = btn.dataset.v;
+      PJ.history.push(() => renderPJStep4());
+      renderPJStep5();
+    };
+  });
+}
+
+/* ---- STEP 5: PENGALI KEHADIRAN (OPSIONAL) ---- */
+function renderPJStep5(){
+  renderFlowHeader('Pengali Kehadiran', 74, PJ_CTX);
+  const body = getFlowBody(PJ_CTX);
+  const wrap = el('div', 'flow-body-content');
+  wrap.style.justifyContent = 'flex-start';
+  wrap.style.paddingTop = '16px';
+
+  wrap.innerHTML = `
+    <h1 class="flow-title-large">Ini setara berapa kali kehadiran?</h1>
+    <p class="flow-subtitle">Kalau pertemuan ini jadi pengganti beberapa kelas sekaligus, atur pengalinya di sini.</p>
+    <div class="flow-choices-stack">
+      <button class="flow-btn-choice ${!PJ.pengaliAktif ? 'primary' : 'tonal'} statelayer" id="pj-pengali-normal">
+        <span>Seperti Biasa (1x)</span>
+        ${!PJ.pengaliAktif ? svg('check') : ''}
+      </button>
+      <button class="flow-btn-choice ${PJ.pengaliAktif ? 'primary' : 'tonal'} statelayer" id="pj-pengali-lebih">
+        <span>Lebih dari 1x</span>
+        ${PJ.pengaliAktif ? svg('check') : ''}
+      </button>
+    </div>
+    <div class="flow-input-container ${PJ.pengaliAktif ? '' : 'hidden'}" id="pj-pengali-input-wrap" style="margin-top:8px;">
+      <div class="field"><label>Setara berapa kehadiran</label><input type="number" id="pj-pengali-val" min="2" value="${PJ.pengaliKehadiran || 2}"></div>
+      <div class="flow-footer-actions">
+        <button class="btn btn-filled statelayer" id="pj-step5-next" style="height:52px;font-size:16px;">Lanjut</button>
+      </div>
+    </div>
+  `;
+  body.appendChild(wrap);
+  fitFlowTitle($('.flow-title-large', wrap));
+
+  const inputWrap = $('#pj-pengali-input-wrap', wrap);
+
+  $('#pj-pengali-normal', wrap).onclick = () => {
+    haptic();
+    PJ.pengaliAktif = false;
+    PJ.pengaliKehadiran = 1;
+    PJ.history.push(() => renderPJStep5());
+    renderPJStep6();
+  };
+  $('#pj-pengali-lebih', wrap).onclick = () => {
+    haptic();
+    PJ.pengaliAktif = true;
+    $('#pj-pengali-normal', wrap).classList.remove('primary'); $('#pj-pengali-normal', wrap).classList.add('tonal');
+    $('#pj-pengali-lebih', wrap).classList.remove('tonal'); $('#pj-pengali-lebih', wrap).classList.add('primary');
+    inputWrap.classList.remove('hidden');
+  };
+  $('#pj-step5-next', wrap).onclick = () => {
+    haptic();
+    PJ.pengaliKehadiran = Number($('#pj-pengali-val', wrap).value) || 2;
+    PJ.history.push(() => renderPJStep5());
+    renderPJStep6();
+  };
+}
+
+/* ---- STEP 6: RINGKASAN & SIMPAN ---- */
+function renderPJStep6(){
+  const m = matkulById(PJ.matkulId);
+  renderFlowHeader('Ringkasan', 95, PJ_CTX);
+  const body = getFlowBody(PJ_CTX);
+  const wrap = el('div', 'flow-body-content');
+  wrap.style.justifyContent = 'flex-start';
+  wrap.style.paddingTop = '16px';
+
+  const durLabel = (PJ_DUR_OPTS.find(d => d[0] === PJ.durasi) || [,''])[1];
+  wrap.innerHTML = `
+    <h1 class="flow-title-large">Yuk, periksa kembali jadwal barunya</h1>
+    <div class="stack gap12 mt8" style="width:100%;max-width:320px;margin:8px auto 0;" id="pj-recap-host"></div>
+    <div class="flow-footer-actions" style="margin-top:16px;">
+      <button class="btn btn-filled statelayer" id="pj-btn-save" style="height:52px;font-size:16px;">Simpan Jadwal Baru</button>
+    </div>
+  `;
+  body.appendChild(wrap);
+  fitFlowTitle($('.flow-title-large', wrap));
+
+  const host = $('#pj-recap-host', wrap);
+  const rows = [
+    ['Mata Kuliah', m.namaLengkap],
+    ['Hari Baru', PJ.hariBaru],
+    ['Jam', PJ.jamMulai + ' - ' + PJ.jamSelesai],
+    ['Mulai Berlaku', fmtTanggalPanjang(PJ.tanggalBerlaku)],
+    ['Durasi Berlaku', durLabel],
+    ['Pengali Kehadiran', PJ.pengaliAktif ? (PJ.pengaliKehadiran + 'x kehadiran') : 'Normal (1x)']
+  ];
+  rows.forEach(([label, val]) => {
+    const item = el('div', 'recap-item-card');
+    item.style.borderWidth = '2px';
+    item.innerHTML = `<span class="txt-body muted" style="font-size:12.5px;font-weight:600;">${label}</span><span class="txt-body-lg" style="font-weight:700;font-size:14px;text-align:right;">${val}</span>`;
+    host.appendChild(item);
+  });
+
+  $('#pj-btn-save', wrap).onclick = () => {
+    const bentrok = DB.data.matkul.some(o => o.id !== m.id && o.hari === PJ.hariBaru && jamBentrok(
+      { hari: PJ.hariBaru, jamMulai: PJ.jamMulai, jamSelesai: PJ.jamSelesai },
+      { hari: o.hari, jamMulai: o.jamMulai, jamSelesai: o.jamSelesai }
+    ));
+    const save = () => {
+      DB.data.jadwalOverride.push({
+        id: uid(), matkulId: m.id, tanggalBerlaku: PJ.tanggalBerlaku, hariBaru: PJ.hariBaru,
+        jamBaruMulai: PJ.jamMulai, jamBaruSelesai: PJ.jamSelesai, tipeDurasi: PJ.durasi,
+        pengaliKehadiran: PJ.pengaliAktif ? PJ.pengaliKehadiran : 1, status: 'aktif'
+      });
+      dbSaveDebounced(); haptic(); navPop(); showSnackbar('Jadwal baru berhasil disimpan'); renderDashboard();
+    };
+    if(bentrok){
+      showDialog({ title: 'Jadwal bentrok', body: 'Ada kelas terjadwal lain di jam yang sama. Tetap ingin memindahkan?', actions: [
+        { label: 'Batal', style: 'btn-text' },
+        { label: 'Tetap Simpan', style: 'btn-filled', onClick: save }
+      ]});
+    } else save();
+  };
 }
 
 /* =========================================================
