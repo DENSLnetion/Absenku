@@ -1776,32 +1776,34 @@ function renderDashboard(){
 
     const count = c.list ? c.list.length : 0;
 
-    // Font size & gap dinamis berdasarkan jumlah item
-    let titleFontSize = 'clamp(26px, 7vw, 34px)';
+    // Skala ukuran font & jarak ekstra besar saat item sedikit
+    let titleFontSize = 'clamp(26px, 7vw, 32px)';
     let listFontSize = 'clamp(14px, 4vw, 15px)';
     let listGap = '8px';
     let descFontSize = 'clamp(14px, 4vw, 15px)';
 
-    if (count === 1) {
-      titleFontSize = 'clamp(32px, 8.5vw, 40px)';
-      listFontSize = 'clamp(18px, 5.2vw, 22px)';
-      listGap = '14px';
-      descFontSize = 'clamp(16px, 4.5vw, 18px)';
+    if (count <= 1) {
+      // Jika 1 matkul / kosong: font jumbo agar judul padat (min 3 baris) & ruang terisi penuh
+      titleFontSize = 'clamp(36px, 10vw, 46px)';
+      listFontSize = 'clamp(20px, 5.5vw, 24px)';
+      listGap = '18px';
+      descFontSize = 'clamp(18px, 5vw, 20px)';
     } else if (count === 2) {
-      titleFontSize = 'clamp(28px, 7.5vw, 36px)';
-      listFontSize = 'clamp(16px, 4.5vw, 18px)';
-      listGap = '10px';
+      titleFontSize = 'clamp(30px, 8.5vw, 38px)';
+      listFontSize = 'clamp(17px, 4.8vw, 19px)';
+      listGap = '12px';
+      descFontSize = 'clamp(16px, 4.5vw, 17px)';
     }
 
     // Menghilangkan &bull; karena sudah di-generate via CSS ::before
-    const listHtml = c.list ? `<ul class="radar-card-list" style="margin-top:16px; padding:0; font-size:${listFontSize}; font-weight:600; opacity:0.9; display:flex; flex-direction:column; gap:${listGap};">` + c.list.map(n=>`<li style="list-style:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n}</li>`).join('') + '</ul>' : '';
-    const descHtml = c.desc ? `<div style="font-size:${descFontSize}; font-weight:500; opacity:0.85; margin-top:12px; line-height:1.5;">${c.desc}</div>` : '';
+    const listHtml = c.list ? `<ul class="radar-card-list" style="margin-top:20px; padding:0; font-size:${listFontSize}; font-weight:700; opacity:0.95; display:flex; flex-direction:column; gap:${listGap};">` + c.list.map(n=>`<li style="list-style:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n}</li>`).join('') + '</ul>' : '';
+    const descHtml = c.desc ? `<div style="font-size:${descFontSize}; font-weight:500; opacity:0.85; margin-top:14px; line-height:1.5;">${c.desc}</div>` : '';
 
     contentEl.classList.remove('radar-content-anim');
     void contentEl.offsetWidth; 
 
     contentEl.innerHTML = `
-      <div style="font-family:var(--font-display); font-size:${titleFontSize}; font-weight:800; line-height:1.2; letter-spacing:-0.5px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">
+      <div style="font-family:var(--font-display); font-size:${titleFontSize}; font-weight:800; line-height:1.15; letter-spacing:-0.5px; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;">
         ${c.title}
       </div>
       ${descHtml}
