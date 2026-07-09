@@ -2577,7 +2577,7 @@ function renderPJStep2(){
   wrap.innerHTML = `
     <h1 class="flow-title-large">Kelas <i>${m.namaLengkap}</i> pindahnya ke hari apa nih?</h1>
     <p class="flow-subtitle">Kelas <b>${m.namaLengkap}</b> biasanya di hari ${m.hari}.</p>
-    <div class="flow-choices-stack" style="gap:8px;max-height:100%;margin-top:14px;">${listHtml}</div>
+    <div class="flow-choices-stack" style="gap:8px;max-height:100%;margin-top:0;">${listHtml}</div>
     <div class="flow-footer-actions" style="margin-top:14px;">
       <button class="flow-btn-choice primary statelayer" id="pj-confirm-hari" style="justify-content:center;text-align:center;">
         <span id="pj-confirm-hari-label"></span>
@@ -2675,7 +2675,7 @@ function renderPJStep4(){
       <div class="field"><label>Tanggal Mulai Berlaku</label><input type="date" id="pj-tanggal" value="${PJ.tanggalBerlaku || todayISO()}"></div>
     </div>
     <p class="flow-subtitle" style="margin-top:20px;">Berapa lama perubahan ini berlaku?</p>
-    <div class="flow-choices-stack" style="gap:10px;margin-top:12px;">${durHtml}</div>
+    <div class="flow-choices-stack" style="gap:10px;margin-top:0;">${durHtml}</div>
   `;
   body.appendChild(wrap);
   fitFlowTitle($('.flow-title-large', wrap));
