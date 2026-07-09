@@ -1928,29 +1928,23 @@ function renderQuestionD() {
     processCurrentCourse();
   };
 
+  const skipBtn = $('#btn-share-skip', wrap);
+
   $('#btn-share-pj', wrap).onclick = () => {
     haptic();
     res.sudahDikirimWA = true;
     const text = generatePesanWA([{ matkulId: m.id, alasan: res.alasan, keterangan: res.keterangan, tanggal: todayISO() }]);
     if (navigator.share) {
-      showDialog({
-        title: 'Kirim laporan izin',
-        body: 'Pilih media pengiriman template presensi kamu.',
-        actions: [
-          { label: 'WhatsApp', style: 'btn-filled', onClick: () => { kirimWA(text); goNext(); } },
-          { label: 'Gunakan Sistem Share', style: 'btn-tonal', onClick: () => { navigator.share({ text }).catch(() => {}); goNext(); } },
-          { label: 'Nanti Saja', style: 'btn-text', onClick: () => goNext() }
-        ]
-      });
+      navigator.share({ text }).catch(() => {});
     } else {
       kirimWA(text);
-      goNext();
     }
+    skipBtn.innerHTML = `<span>Lanjutkan</span>${svg('arrowR')}`;
   };
 
-  $('#btn-share-skip', wrap).onclick = () => {
+  skipBtn.onclick = () => {
     haptic();
-    res.sudahDikirimWA = false;
+    if (!res.sudahDikirimWA) res.sudahDikirimWA = false;
     goNext();
   };
 }
