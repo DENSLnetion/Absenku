@@ -668,6 +668,7 @@ function todayHariIndex(){ return new Date().getDay(); }
 const ICONS = {
   check:'<path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/>',
   plus:'<path d="M11 5v6H5v2h6v6h2v-6h6v-2h-6V5z"/>',
+  minus:'<path d="M5 11h14v2H5z"/>',
   back:'<path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z"/>',
   close:'<path d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/>',
   edit:'<path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>',
@@ -2288,7 +2289,7 @@ function renderRiwayat(){
       const card = el('div','card-outlined row between statelayer pad-h', '');
       card.style.margin='6px 20px'; card.style.cursor='pointer';
       card.innerHTML = (RIW.selectMode? '<input type="checkbox" class="riw-chk" data-id="'+r.id+'" style="width:20px;height:20px;margin-right:10px;" '+(RIW.selected.has(r.id)?'checked':'')+'>':'')+
-        '<div class="stack" style="gap:4px;flex:1;"><div class="txt-body-lg" style="font-weight:500;">'+(m?m.namaLengkap:'(Kelas Dihapus)')+'</div><div class="txt-body muted">'+fmtTanggalPendek(r.tanggal)+' • '+r.hari+'</div></div>'+
+        '<div class="stack" style="gap:4px;flex:1;"><div class="txt-body-lg" style="font-weight:500;">'+(m?m.namaLengkap:'(Kelas Dihapus)')+'</div><div class="txt-body muted">'+(r.inputLama? 'Input data lama' : fmtTanggalPendek(r.tanggal)+' • '+r.hari)+'</div></div>'+
         '<span class="chip '+r.alasan+' selected">'+r.alasan[0].toUpperCase()+r.alasan.slice(1)+'</span>';
       card.addEventListener('click', ()=>{
         if(RIW.selectMode){ toggleSelect(r.id); renderRiwayat(); }
@@ -2342,7 +2343,7 @@ function openRiwayatDetail(r){
   openSheet((body,close)=>{
     const m = matkulById(r.matkulId);
     body.appendChild(el('h3','txt-title mt8', m?m.namaLengkap:'(Kelas Dihapus)'));
-    body.appendChild(el('div','txt-body muted mt8', fmtTanggalPanjang(r.tanggal)+' • '+r.hari));
+    body.appendChild(el('div','txt-body muted mt8', r.inputLama? 'Input data lama' : fmtTanggalPanjang(r.tanggal)+' • '+r.hari));
     const chip = el('span','chip '+r.alasan+' selected mt12', r.alasan[0].toUpperCase()+r.alasan.slice(1));
     body.appendChild(chip);
     body.appendChild(el('div','txt-body mt12', r.keterangan? r.keterangan : '<span class="muted">Tidak ada catatan alasan khusus</span>'));
@@ -2506,6 +2507,16 @@ function renderSettingsMatkul(){
         const card = el('div','card-outlined'); if(m.arsip) card.style.opacity='.55';
         card.innerHTML = '<div class="row between"><div class="txt-title-sm">'+m.namaLengkap+(m.arsip?' (Arsip)':'')+'</div></div>'+
           '<div class="txt-body muted mt8">'+m.hari+', '+m.jamMulai+'-'+m.jamSelesai+' • '+(m.modeDefault==='online'?'Online':'Offline')+'<br>Limit khusus: '+(m.limitAbsenKhusus!=null?m.limitAbsenKhusus:'Bawaan ('+DB.data.settings.limitAbsenUmum+')')+'</div>';
+        const counterRow = el('div','row between mt12');
+        counterRow.innerHTML = '<span class="txt-body muted">Jumlah absen tercatat: <b style="color:var(--clr-on-surface);">'+absenTerpakaiUntukMatkul(m.id)+'</b></span>';
+        const counterBtns = el('div','row gap8');
+        const minusBtn = el('button','btn-icon statelayer'); minusBtn.innerHTML = svg('minus'); minusBtn.style.background='var(--clr-surface-container-high)';
+        const plusBtn = el('button','btn-icon statelayer'); plusBtn.innerHTML = svg('plus'); plusBtn.style.background='var(--clr-surface-container-high)';
+        minusBtn.onclick = ()=> kurangiAbsenManual(m, refresh);
+        plusBtn.onclick = ()=> tambahAbsenManual(m, refresh);
+        counterBtns.appendChild(minusBtn); counterBtns.appendChild(plusBtn);
+        counterRow.appendChild(counterBtns);
+        card.appendChild(counterRow);
         const row = el('div','row gap8 mt12');
         const edit = el('button','btn btn-outlined statelayer','Ubah'); edit.onclick=()=>openEditMatkulSheet(m,refresh);
         const del = el('button','btn statelayer','Hapus'); del.style.color='var(--clr-error)';
@@ -2553,6 +2564,56 @@ function openEditMatkulSheet(m, onDone){
     };
     body.appendChild(btn);
   },{title:''});
+}
+function tambahAbsenManual(m, refresh){
+  showDialog({
+    title: 'Tambah data lama — '+m.namaLengkap,
+    body: 'Pilih alasan ketidakhadiran yang mau ditambahkan ke riwayat sebagai input data lama (bukan absensi hari ini).',
+    actions: [
+      { label:'Izin', style:'btn-tonal', onClick:()=> simpanAbsenManual(m, 'izin', refresh) },
+      { label:'Sakit', style:'btn-tonal', onClick:()=> simpanAbsenManual(m, 'sakit', refresh) },
+      { label:'Bolos', style:'btn-filled', onClick:()=> simpanAbsenManual(m, 'bolos', refresh) },
+      { label:'Batal', style:'btn-text' }
+    ]
+  });
+}
+function simpanAbsenManual(m, alasan, refresh){
+  haptic();
+  const entry = {
+    id: uid(),
+    matkulId: m.id,
+    tanggal: todayISO(),
+    hari: HARI[todayHariIndex()],
+    alasan: alasan,
+    keterangan: '',
+    sudahDikirimWA: false,
+    waktuDibuat: Date.now(),
+    dihapusPada: null,
+    overrideId: null,
+    pengaliKehadiranSnapshot: 1,
+    inputLama: true
+  };
+  DB.data.riwayatAbsen.push(entry);
+  dbSaveDebounced();
+  refresh();
+  renderDashboard();
+  showSnackbar('Data lama berhasil ditambahkan');
+}
+function kurangiAbsenManual(m, refresh){
+  const candidates = riwayatAktif().filter(r=>r.matkulId===m.id).sort((a,b)=> b.waktuDibuat-a.waktuDibuat);
+  if(candidates.length===0){ showSnackbar('Belum ada data absen untuk dikurangi'); return; }
+  const target = candidates[0];
+  showDialog({title:'Kurangi data absen?', body:'Catatan absen '+m.namaLengkap+' yang paling baru akan dihapus. Dapat dipulihkan lewat menu Baru Saja Dihapus.', actions:[
+    {label:'Batal',style:'btn-text'},
+    {label:'Kurangi',style:'btn-filled',onClick:()=>{
+      haptic();
+      target.dihapusPada = Date.now();
+      dbSaveDebounced();
+      refresh();
+      renderDashboard();
+      showSnackbar('Data absen berhasil dikurangi');
+    }}
+  ]});
 }
 function renderSettingsAturan(){
   settingsSubScreen('Kebijakan Limit Absen', (body)=>{
