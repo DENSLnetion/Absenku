@@ -654,18 +654,22 @@ input[type="checkbox"]:checked::after{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: all var(--dur-s) var(--ease-emph);
+  transition: all var(--dur-s) var(--ease-emph), transform 0.25s cubic-bezier(0.2, 0, 0, 1), border-radius 0.25s cubic-bezier(0.2, 0, 0, 1);
   cursor: pointer;
   min-height: 104px;
 }
+/* MATERIAL 3 EXPRESSIVE: capsule melar & mengotak saat ditekan */
 .flow-btn-choice:active {
-  transform: scale(0.96);
+  transform: scaleX(1.04) scaleY(0.92);
   background: var(--clr-surface-container-highest);
+  border-radius: var(--shape-md);
 }
 .flow-btn-choice.primary {
   background: var(--clr-primary-container);
   color: var(--clr-on-primary-container);
   border-color: transparent;
+  /* MATERIAL 3 EXPRESSIVE: state terpilih otomatis sedikit lebih kotak */
+  border-radius: var(--shape-lg);
 }
 .flow-btn-choice.tonal {
   background: var(--clr-secondary-container);
@@ -2657,7 +2661,7 @@ function renderPJStep2(){
   const body = getFlowBody(PJ_CTX);
   const wrap = el('div', 'flow-body-content');
   wrap.style.justifyContent = 'flex-start';
-  wrap.style.paddingTop = '16px'; wrap.style.paddingBottom = '100px';
+  wrap.style.paddingTop = '16px'; wrap.style.paddingBottom = '160px';
 
   let selected = PJ.hariBaru || m.hari;
 
@@ -2678,13 +2682,13 @@ function renderPJStep2(){
 
   wrap.innerHTML = `
     <h1 class="flow-title-large">Kelas <i>${m.namaLengkap}</i> pindahnya ke hari apa nih?</h1>
-    <p class="flow-subtitle">Kelas <b>${m.namaLengkap}</b> biasanya di hari ${m.hari}.</p>
     <div class="flow-choices-stack" style="gap:8px;max-height:100%;margin-top:0;">${listHtml}</div>
     <div class="flow-footer-actions" style="margin-top:14px;">
       <button class="flow-btn-choice primary statelayer" id="pj-confirm-hari" style="justify-content:center;text-align:center;">
         <span id="pj-confirm-hari-label"></span>
       </button>
     </div>
+    <div style="height: 64px; flex-shrink: 0;"></div>
   `;
   body.appendChild(wrap);
   fitFlowTitle($('.flow-title-large', wrap));
@@ -2759,7 +2763,7 @@ function renderPJStep4(){
   const body = getFlowBody(PJ_CTX);
   const wrap = el('div', 'flow-body-content');
   wrap.style.justifyContent = 'flex-start';
-  wrap.style.paddingTop = '16px'; wrap.style.paddingBottom = '100px';
+  wrap.style.paddingTop = '16px'; wrap.style.paddingBottom = '160px';
 
   const durHtml = PJ_DUR_OPTS.map(([v, label, desc]) => `
     <button class="flow-btn-choice ${v === PJ.durasi ? 'primary' : 'tonal'} statelayer" data-v="${v}">
@@ -2778,6 +2782,7 @@ function renderPJStep4(){
     </div>
     <p class="flow-subtitle" style="margin-top:20px;">Berapa lama perubahan ini berlaku?</p>
     <div class="flow-choices-stack" style="gap:10px;margin-top:0;">${durHtml}</div>
+    <div style="height: 64px; flex-shrink: 0;"></div>
   `;
   body.appendChild(wrap);
   fitFlowTitle($('.flow-title-large', wrap));
