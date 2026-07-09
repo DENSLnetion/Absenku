@@ -511,7 +511,8 @@ input[type="checkbox"]:checked::after{
   align-items: center;
   justify-content: center;
   gap: 7px;
-  margin: 8px auto calc(20px + var(--sab));
+  /* Jarak atas 16px, bawah 40px (+ safe area) supaya posisinya lebih naik */
+  margin: 16px auto calc(40px + var(--sab));
   flex-shrink: 0;
   order: 3;
 }
@@ -545,8 +546,8 @@ input[type="checkbox"]:checked::after{
   align-items: flex-start;
   justify-content: flex-start;
   padding: 12px 20px 0;
-  padding-bottom: 140px !important;
-  padding-bottom: 64px !important;
+  /* Padding bottom dibuat 96px supaya konten terakhir tidak mepet indikator saat discroll */
+  padding-bottom: 96px !important;
   text-align: left;
   gap: 20px;
   animation: slideUp var(--dur-m) var(--ease-emph-decel) both;
