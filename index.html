@@ -227,7 +227,7 @@ a{color:inherit; text-decoration:none;}
 .screen{position:absolute; inset:0; background:var(--clr-surface); display:none; flex-direction:column; overflow:hidden;}
 .hidden{display:none !important;}
 .screen.active{display:flex;}
-.scroll-y{overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; overscroll-behavior:contain;}
+.scroll-y{overflow-y:auto; overflow-x:visible !important; -webkit-overflow-scrolling:touch; flex:1; overscroll-behavior:contain;}
 
 /* ---- swipe antar tab ---- */
 .tabs-wrap{position:absolute; top:0; bottom:calc(80px + var(--sab)); left:0; right:0; overflow:hidden; touch-action:pan-y;}
@@ -236,7 +236,7 @@ a{color:inherit; text-decoration:none;}
 .tab-panel[data-tab-index="1"]{z-index:2;}
 
 /* ---- Material 3 Expressive State Layer & Touch Targets ---- */
-.statelayer{position:relative; overflow:hidden; transition:transform 0.12s var(--ease-emph);}
+.statelayer{position:relative; overflow:hidden; transition:transform 0.12s var(--ease-emph); -webkit-mask-image: -webkit-radial-gradient(white, black); mask-image: radial-gradient(white, black); -webkit-backface-visibility: hidden; backface-visibility: hidden; isolation: isolate;}
 .statelayer::after{content:'';position:absolute;inset:0;background:currentColor;opacity:0; pointer-events:none;}
 .statelayer:active{}
 
@@ -536,6 +536,7 @@ input[type="checkbox"]:checked::after{
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: visible !important;
   order: 2;
 }
 .flow-body-content {
@@ -659,7 +660,8 @@ input[type="checkbox"]:checked::after{
 .flow-btn-choice {
   width: 100%;
   padding: 20px 30px;
-  border-radius: var(--shape-full);
+  /* Ganti dari var(--shape-full) ke 64px agar morphing tidak glitch */
+  border-radius: 64px;
   border: 2px solid var(--clr-outline-variant);
   background: var(--clr-surface-container-low);
   color: var(--clr-on-surface);
@@ -675,6 +677,7 @@ input[type="checkbox"]:checked::after{
   will-change: transform, border-radius;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
+  box-sizing: border-box;
 }
 /* MATERIAL 3 EXPRESSIVE: capsule melar horizontal & mengotak saat ditekan (spring) */
 .flow-btn-choice:active {
