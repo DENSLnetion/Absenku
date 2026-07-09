@@ -1581,19 +1581,31 @@ function openDetailProgressMatkul(matkulId) {
   const limit = limitUntukMatkul(m);
 
   openSheet((body, closeSheet) => {
-    body.appendChild(el('h3', 'txt-title mt8', m.namaLengkap));
-    body.appendChild(el('p', 'txt-body muted', 'Riwayat presensi kelas semester berjalan'));
+    body.appendChild(el('p', 'txt-body muted mt8', 'Riwayat presensi kelas semester berjalan'));
 
-    const statusDiv = el('div', 'row between card-outlined mt12');
-    statusDiv.style.borderColor = list.length > limit ? 'var(--clr-error)' : 'var(--clr-outline-variant)';
-    statusDiv.innerHTML = `
-      <div class="stack">
-        <span class="txt-title-sm">Total Ketidakhadiran</span>
-        <span class="txt-body-lg muted" style="font-size:13px;">Batas toleransi maksimal: ${limit} kali</span>
+    const isOver = list.length > limit;
+    const bg = isOver ? 'var(--clr-error-container)' : 'var(--clr-primary-container)';
+    const fg = isOver ? 'var(--clr-on-error-container)' : 'var(--clr-on-primary-container)';
+    const accent = isOver ? 'var(--clr-error)' : 'var(--clr-primary)';
+    const accentOn = isOver ? 'var(--clr-on-error)' : 'var(--clr-on-primary)';
+
+    const statusCard = el('div', 'mt16');
+    statusCard.style.cssText = `position:relative;overflow:hidden;background:${bg};color:${fg};border-radius:32px;padding:24px;`;
+    statusCard.innerHTML = `
+      <div style="position:absolute;top:-44px;right:-36px;width:150px;height:150px;border-radius:50%;background:${accent};opacity:0.12;"></div>
+      <div style="position:absolute;bottom:-64px;left:-34px;width:130px;height:130px;border-radius:50%;background:${accent};opacity:0.08;"></div>
+      <div style="position:relative;">
+        <div class="txt-title-sm" style="font-weight:700;font-size:16px;line-height:1.3;">${m.namaLengkap}</div>
+        <div class="row between" style="align-items:flex-end;margin-top:22px;gap:12px;">
+          <div class="stack" style="gap:2px;">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;opacity:0.7;">Total Ketidakhadiran</span>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:46px;line-height:1.05;letter-spacing:-1.5px;">${list.length}<span style="font-size:22px;font-weight:600;opacity:0.6;">/${limit}</span></div>
+          </div>
+          <span style="flex-shrink:0;display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:999px;background:${accent};color:${accentOn};font-size:11.5px;font-weight:800;letter-spacing:0.2px;white-space:nowrap;">${isOver ? 'MELEBIHI BATAS' : 'BATAS TOLERANSI ' + limit + 'X'}</span>
+        </div>
       </div>
-      <div class="txt-headline" style="font-size: 26px; font-family: var(--font-display); color: ${list.length > limit ? 'var(--clr-error)' : 'var(--clr-primary)'}">${list.length} / ${limit}</div>
     `;
-    body.appendChild(statusDiv);
+    body.appendChild(statusCard);
 
     const titleH = el('div', 'txt-title-sm mt24', 'Catatan Absensi');
     body.appendChild(titleH);
@@ -2959,22 +2971,27 @@ function markAbsenCommittedHariIni(){
 }
 function renderQuickCheck(){
   const root = $('#scr-quickcheck'); root.innerHTML='';
-  const wrap = el('div','stack scroll-y pad-h'); wrap.style.cssText='flex:1;padding-top:24px;padding-bottom:24px;justify-content:center;align-items:flex-start;text-align:left;';
-  wrap.appendChild(el('h2','txt-display', 'Mau absen?')).style.cssText='font-weight:700;';
-  const sub = el('p','txt-body-lg muted mt12','Yuk catat kehadiran kamu hari ini sebelum lanjut buka aplikasi.');
-  wrap.appendChild(sub);
-  const row = el('div','stack gap12 mt24'); row.style.cssText='width:100%;';
-  const btnMau = el('button','btn btn-filled statelayer','Mau'); btnMau.style.width='100%';
+  const wrap = el('div','flow-body-content scroll-y'); wrap.style.cssText='padding-top:40px;padding-bottom:32px;justify-content:flex-start;flex:1;';
+
+  wrap.appendChild(el('h1','flow-title-large','Mau absen hari ini?'));
+  wrap.appendChild(el('p','flow-subtitle','Yuk catat kehadiran kamu hari ini sebelum lanjut buka aplikasi.'));
+
+  const row = el('div','flow-choices-stack'); row.style.marginTop='28px';
+  const btnMau = el('button','flow-btn-choice primary statelayer');
+  btnMau.innerHTML = '<span>Mau</span>'+svg('check');
   btnMau.onclick = ()=>{
     haptic();
     navPopSilent();
     setTimeout(()=>startAestheticAbsenFlow(), 200);
   };
-  const btnLanjut = el('button','btn btn-outlined statelayer','Lanjut ke Aplikasi'); btnLanjut.style.width='100%';
+  const btnLanjut = el('button','flow-btn-choice tonal statelayer');
+  btnLanjut.innerHTML = '<span>Lanjut ke Aplikasi</span>'+svg('arrowR');
   btnLanjut.onclick = ()=> navPop();
   row.appendChild(btnMau); row.appendChild(btnLanjut);
   wrap.appendChild(row);
-  const btnBisukan = el('button','btn-text statelayer mt8','Bisukan pesan ini untuk hari ini'); btnBisukan.style.cssText='align-self:center;color:var(--clr-on-surface-variant);font-weight:700;';
+
+  const btnBisukan = el('button','btn-text statelayer','Bisukan pesan ini untuk hari ini');
+  btnBisukan.style.cssText='align-self:center;color:var(--clr-on-surface-variant);font-weight:700;margin-top:12px;';
   btnBisukan.onclick = ()=>{
     haptic();
     DB.data.appState.qcBisukanTanggal = todayISO();
