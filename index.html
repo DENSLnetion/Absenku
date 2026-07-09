@@ -1151,32 +1151,52 @@ function absenTerpakaiUntukMatkul(matkulId){
 }
 function totalPertemuanEstimasi(m){ return 14; }
 
-/* ---- INTUITIVE ABSENCE BUDGET STATE CALCULATOR ---- */
-function hitungBatasAbsenAman(){
-  const list = DB.data.matkul.filter(m=>!m.arsip);
-  if(list.length===0) return { totalJatah: 0, terpakai: 0, sisa: 0, persentaseSisa: 100, label: 'Sangat Aman' };
-  
-  let totalJatah = 0;
-  let terpakai = 0;
-  
-  list.forEach(m => {
-    totalJatah += limitUntukMatkul(m);
-    terpakai += absenTerpakaiUntukMatkul(m.id);
-  });
-  
-  const sisa = Math.max(0, totalJatah - terpakai);
-  const persentaseSisa = totalJatah > 0 ? Math.round((sisa / totalJatah) * 100) : 100;
-  
-  let label = 'Sangat Aman';
-  if (persentaseSisa <= 25) {
-    label = 'Kritis!';
-  } else if (persentaseSisa <= 50) {
-    label = 'Waspada';
-  } else if (persentaseSisa <= 75) {
-    label = 'Cukup Aman';
+/* ---- INTUITIVE TRACKER: EVALUASI RADAR HARIAN ---- */
+function evaluasiRadarHarian(){
+  let isBesok = false;
+  let jadwal = jadwalEfektifTanggal(todayISO());
+  // Cek apakah semua jam kelas hari ini sudah terlewati
+  if (jadwal.length > 0) {
+    let maxSelesai = 0;
+    jadwal.forEach(j => { let endMin = hmToMin(j.jamSelesai); if (endMin > maxSelesai) maxSelesai = endMin; });
+    if (nowMinutes() > maxSelesai) {
+      isBesok = true;
+      jadwal = jadwalEfektifTanggal(addDays(todayISO(), 1));
+    }
+  } else {
+    isBesok = true;
+    jadwal = jadwalEfektifTanggal(addDays(todayISO(), 1));
   }
-  
-  return { totalJatah, terpakai, sisa, persentaseSisa, label };
+  let labelHari = isBesok ? 'Besok' : 'Hari ini';
+  if (jadwal.length === 0) {
+    return { status: 'libur', bg: 'var(--clr-surface-container)', fg: 'var(--clr-on-surface)', icon: svg('check'), title: 'Kosong', desc: 'Tidak ada jadwal kelas ' + labelHari.toLowerCase() + '.' };
+  }
+  let habis = [], kritis = [], waspada = [];
+  jadwal.forEach(j => {
+    const m = matkulById(j.matkulId);
+    if(!m) return;
+    const sisa = limitUntukMatkul(m) - absenTerpakaiUntukMatkul(m.id);
+    if (sisa <= 0) habis.push(m.namaLengkap);
+    else if (sisa === 1) kritis.push(m.namaLengkap);
+    else if (sisa === 2) waspada.push(m.namaLengkap + ' (sisa 2)');
+  });
+  let bg = 'var(--clr-primary-container)', fg = 'var(--clr-on-primary-container)', icon = svg('check');
+  let title = `Aman, ${labelHari.toLowerCase()} boleh bolos`;
+  let desc = 'Semua kelas jatah absennya masih utuh atau aman.';
+  if (habis.length > 0) {
+    title = `JANGAN BOLOS ${labelHari.toUpperCase()}!`;
+    desc = `Jatah absen sudah habis untuk kelas: ${habis.join(', ')}`;
+    bg = 'var(--clr-error-container)'; fg = 'var(--clr-on-error-container)'; icon = svg('warn');
+  } else if (kritis.length > 0) {
+    title = `Jatah terakhir untuk ${labelHari.toLowerCase()}!`;
+    desc = `Sisa jatah tinggal 1 untuk kelas: ${kritis.join(', ')}`;
+    bg = '#FCE3B4'; fg = '#523A00'; icon = svg('warn');
+  } else if (waspada.length > 0) {
+    title = waspada.length > 1 ? `Waspadai ${waspada.length} kelas ${labelHari.toLowerCase()}` : `Waspadai kelas ${labelHari.toLowerCase()}`;
+    desc = `Beberapa kelas sudah terpakai jatahnya: ${waspada.join(', ')}`;
+    bg = 'var(--clr-secondary-container)'; fg = 'var(--clr-on-secondary-container)'; icon = svg('info');
+  }
+  return { bg, fg, icon, title, desc };
 }
 
 function hitungStreak(){
@@ -1376,8 +1396,11 @@ function obStep1(c){
 function obStep2(c){
   const wrap = el('div', 'onboard-step-container animate-slide-up');
   wrap.innerHTML = `
-    <h2 class="flow-title-large">Semester kamu lagi di mana?</h2>
-    <p class="flow-subtitle">Ini untuk melacak durasi perkuliahan serta jatah absensi otomatis kamu.</p>
+    <h2 class="flow-title-large">Kalender akademik baru, posisi semester kamu sekarang ada di mana?</h2>
+    <div class="field mt12">
+      <label>Semester Berjalan</label>
+      <input type="number" id="ob-semester-berjalan" min="1" max="14">
+    </div>
     <div class="segmented mt12" id="ob-sem-seg">
       <button data-v="awal" class="active">Awal Semester</button>
       <button data-v="jalan">Udah Jalan</button>
@@ -1422,6 +1445,7 @@ function obStep2(c){
   const p = DB.data.profile;
   
   // Set initial values
+  $('#ob-semester-berjalan', wrap).value = p.semesterSekarang || 1;
   $('#ob-mulai', areaAwal).value = p.tanggalMulaiSemester || todayISO();
   $('#ob-mulai-jalan', areaJalan).value = p.tanggalMulaiSemester || todayISO();
   $('#ob-tahunmasuk', areaJalan).value = new Date().getFullYear();
@@ -1458,6 +1482,7 @@ function obStep2(c){
   });
   
   stepFooterOnboard(wrap, () => {
+    p.semesterSekarang = Number($('#ob-semester-berjalan', wrap).value) || 1;
     if (OB.editSemesterMode === 'awal') {
       const mulai = $('#ob-mulai', areaAwal).value;
       if(!mulai){ showSnackbar('Tentukan tanggal mulai'); return; }
@@ -1697,29 +1722,16 @@ function renderDashboard(){
     root.appendChild(details);
   }
   
-  // INTUITIVE TRACKER: ABSENCE BUDGET METER
-  const budget = hitungBatasAbsenAman();
+  // INTUITIVE TRACKER: CARD INDIKASI HARIAN
+  const radar = evaluasiRadarHarian();
   const statCard = el('div','card mt8');
-  
-  // Determine text indicator based on state
-  let trackerNarrative = `Kamu memiliki total <b>${budget.totalJatah}</b> jatah absen di semester ini. `;
-  if (budget.terpakai === 0) {
-    trackerNarrative += `Luar biasa! Belum ada riwayat ketidakhadiran, pertahankan rekor sempurnamu!`;
-  } else {
-    trackerNarrative += `Kamu telah menggunakan <b>${budget.terpakai}</b> kali absen. Sisa jatah aman saat ini adalah <b>${budget.sisa}</b> kali lagi.`;
-  }
-  
   statCard.innerHTML = `
-    <div class="ring-wrap">
-      ${ringSVG(budget.persentaseSisa/100, 172, 14)}
-      <div class="ring-center">
-        <div class="num">${budget.persentaseSisa}%</div>
-        <div class="lbl">Sisa Jatah</div>
+    <div style="background:${radar.bg}; color:${radar.fg}; border-radius:var(--shape-md); padding:16px; display:flex; gap:16px; align-items:flex-start;">
+      <div style="flex-shrink:0; margin-top:2px; width:28px; height:28px;">${radar.icon}</div>
+      <div class="stack" style="gap:4px;">
+        <span style="font-weight:800; font-family:var(--font-display); font-size:18px; letter-spacing:-0.2px; line-height:1.2;">${radar.title}</span>
+        <span style="font-size:13.5px; font-weight:500; opacity:0.9; line-height:1.4;">${radar.desc}</span>
       </div>
-    </div>
-    <div class="stack mt24" style="text-align:center; gap:8px;">
-      <span class="chip selected ${budget.persentaseSisa <= 50 ? 'breathe-urgent' : ''}" style="align-self:center; pointer-events:none; border-radius:var(--shape-full); font-weight:700; background:var(--clr-primary-container); color:var(--clr-on-primary-container); font-size:12px; letter-spacing: 0.5px; border:none; height:32px; padding:0 16px;">STATUS: ${budget.label.toUpperCase()}</span>
-      <p class="txt-body muted" style="line-height:1.6; font-size:14px; margin: 6px 0 0;">${trackerNarrative}</p>
     </div>
   `;
   root.appendChild(statCard);
@@ -3586,7 +3598,10 @@ function showRekapSemester(fromReset){
   const items = DB.data.matkul;
   let totalIzin=0,totalSakit=0,totalBolos=0;
   riwayatAktif().forEach(r=>{ if(r.alasan==='izin')totalIzin++; else if(r.alasan==='sakit')totalSakit++; else totalBolos++; });
-  const budget = hitungBatasAbsenAman();
+  let budgetTotalJatah=0, budgetTerpakai=0;
+  items.forEach(m=>{ budgetTotalJatah += limitUntukMatkul(m); budgetTerpakai += absenTerpakaiUntukMatkul(m.id); });
+  const budgetSisa = Math.max(0, budgetTotalJatah - budgetTerpakai);
+  const budget = { persentaseSisa: budgetTotalJatah>0 ? Math.round((budgetSisa/budgetTotalJatah)*100) : 100 };
   const scoreCard = el('div','card mt24');
   scoreCard.innerHTML = '<div class="ring-wrap">'+ringSVG(budget.persentaseSisa/100,172,14)+'<div class="ring-center"><div class="num">'+budget.persentaseSisa+'%</div><div class="lbl">Sisa Jatah</div></div></div>';
   wrap.appendChild(scoreCard);
