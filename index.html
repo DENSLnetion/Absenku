@@ -238,7 +238,7 @@ a{color:inherit; text-decoration:none;}
 /* ---- Material 3 Expressive State Layer & Touch Targets ---- */
 .statelayer{position:relative; overflow:hidden; transition:transform 0.12s var(--ease-emph);}
 .statelayer::after{content:'';position:absolute;inset:0;background:currentColor;opacity:0; pointer-events:none;}
-.statelayer:active{transform:scale(0.97);}
+.statelayer:active{}
 
 .ripple { position: absolute; border-radius: var(--shape-full); background: currentColor; opacity: 0.12; transform: scale(0); animation: ripple-anim 500ms linear; pointer-events: none; }
 @keyframes ripple-anim { to { transform: scale(4); opacity: 0; } }
@@ -246,11 +246,11 @@ a{color:inherit; text-decoration:none;}
 /* ---- buttons ---- */
 .btn{display:inline-flex; align-items:center; justify-content:center; gap:10px; height:52px; padding:0 24px; border-radius:var(--shape-full); font-size:15px; font-weight:700; font-family:var(--font-display); transition:all var(--dur-s) var(--ease-emph); min-width:48px; min-height:48px;}
 .btn-filled{background:var(--clr-primary); color:var(--clr-on-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 2px solid transparent;}
-.btn-filled:active{border-radius:var(--shape-md); transform:scale(.97); box-shadow:none;}
+.btn-filled:active{border-radius:var(--shape-md); box-shadow:none;}
 .btn-tonal{background:var(--clr-secondary-container); color:var(--clr-on-secondary-container); border: 2px solid transparent;}
-.btn-tonal:active{border-radius:var(--shape-md); transform:scale(.97);}
+.btn-tonal:active{border-radius:var(--shape-md);}
 .btn-outlined{background:transparent; border:2px solid var(--clr-outline); color:var(--clr-primary);}
-.btn-outlined:active{border-radius:var(--shape-md); transform:scale(.97);}
+.btn-outlined:active{border-radius:var(--shape-md);}
 .btn-text{height:48px; padding:0 16px; color:var(--clr-primary); font-weight:700;}
 .btn-icon{width:48px; height:48px; border-radius:var(--shape-full); display:inline-flex; align-items:center; justify-content:center; color:var(--clr-on-surface-variant); transition:all var(--dur-s) var(--ease-emph); flex-shrink:0;}
 .btn-icon:active{background:var(--clr-surface-container-highest); transform:scale(0.92);}
@@ -392,11 +392,10 @@ input[type="checkbox"]:checked::after{
 }
 
 /* ==========================================================
-   MATERIAL 3 EXPRESSIVE — Physics-based Rubber-band & Squish
-   Class .squish-press dan .scroll-rubber di-toggle otomatis oleh
+   MATERIAL 3 EXPRESSIVE — Physics-based Rubber-band
+   Class .scroll-rubber di-toggle otomatis oleh
    fungsi initPhysicsInteractions() di bagian script JS.
    ========================================================== */
-.squish-press{ transform:scale(0.92) !important; transition:transform 0.2s cubic-bezier(0.2, 0, 0, 1); }
 .scroll-rubber{ transition:transform 0.45s cubic-bezier(0.16, 1.4, 0.4, 1); }
 
 /* ---- scrim + bottom sheet ---- */
@@ -534,6 +533,7 @@ input[type="checkbox"]:checked::after{
   justify-content: flex-start;
   padding: 12px 20px 0;
   padding-bottom: 140px !important;
+  padding-bottom: 64px !important;
   text-align: left;
   gap: 20px;
   animation: slideUp var(--dur-m) var(--ease-emph-decel) both;
@@ -655,7 +655,7 @@ input[type="checkbox"]:checked::after{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: all var(--dur-s) var(--ease-emph), transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-radius 0.2s ease, background 0.2s ease;
+  transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-radius 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s ease, color 0.3s ease !important;
   cursor: pointer;
   min-height: 104px;
 }
@@ -756,6 +756,7 @@ input[type="checkbox"]:checked::after{
   margin-left: auto;
   margin-right: auto;
   margin-bottom: auto;
+  margin-bottom: 64px !important;
 }
 
 /* Recap card styling */
@@ -3791,28 +3792,11 @@ document.addEventListener('pointerdown', (e) => {
   setTimeout(() => ripple.remove(), 500);
 });
 /* ==========================================================
-   MATERIAL 3 EXPRESSIVE — Physics-based Rubber-band & Squish
+   MATERIAL 3 EXPRESSIVE — Physics-based Rubber-band
    Panggil initPhysicsInteractions() sekali saat app init
    (sudah di-hook otomatis di dalam initApp()).
    ========================================================== */
 function initPhysicsInteractions(){
-  // ---- Squish micro-interaction untuk .statelayer / .btn ----
-  function addSquish(e){
-    const target = e.target.closest('.statelayer, .btn');
-    if(target) target.classList.add('squish-press');
-  }
-  function removeSquish(e){
-    const target = e.target.closest('.statelayer, .btn');
-    if(target) target.classList.remove('squish-press');
-    // fallback: bersihkan semua kalau touch berakhir di luar target (mis. drag keluar)
-    document.querySelectorAll('.squish-press').forEach(elx=>{
-      if(!elx.contains(e.target)) elx.classList.remove('squish-press');
-    });
-  }
-  document.addEventListener('touchstart', addSquish, {passive:true});
-  document.addEventListener('touchend', removeSquish, {passive:true});
-  document.addEventListener('touchcancel', removeSquish, {passive:true});
-
   // ---- Rubber-band scroll untuk .scroll-y ----
   document.querySelectorAll('.scroll-y').forEach(scroller=>{
     let startY = 0;
