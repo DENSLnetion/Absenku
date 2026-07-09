@@ -325,6 +325,23 @@ input[type="checkbox"]:checked::after{
 /* ---- nav bar ---- */
 @keyframes squish { 0% { transform: scale(1); } 40% { transform: scaleX(1.15) scaleY(0.85); } 100% { transform: scale(1); } } .navpill.animate-squish { animation: squish 0.35s cubic-bezier(0.2,0,0,1); }
 @keyframes breathe-urgent { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.96); opacity: 0.85; } } .breathe-urgent { animation: breathe-urgent 2.5s ease-in-out infinite; }
+/* ---- radar carousel: material 3 expressive rubber-band pop transition ---- */
+@keyframes radar-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.radar-content-anim { animation: radar-fade-up 0.4s cubic-bezier(0.2, 0, 0, 1) both; }
+.radar-card-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+.radar-card-list li{ position:relative; padding-left:16px; }
+.radar-card-list li::before{ content:'•'; position:absolute; left:0; font-weight:800; }
+.radar-dots{ display:flex; gap:6px; justify-content:center; margin-top:14px; position:relative; z-index:2; }
+.radar-dots span{ width:6px; height:6px; border-radius:50%; background:currentColor; opacity:0.3; transition:all var(--dur-s,0.3s) var(--ease-emph,ease); }
+.radar-dots span.active{ opacity:0.95; width:18px; border-radius:3px; }
+.radar-card-container {
+  transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-radius 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.5s ease, color 0.5s ease !important;
+  will-change: transform, border-radius, background-color;
+}
+.radar-card-container:active {
+  transform: scaleX(1.04) scaleY(0.96) !important;
+  border-radius: var(--shape-md) !important;
+}
 .navbar{display:flex; height:calc(80px + var(--sab)); padding-bottom:var(--sab); background:var(--clr-surface-container-high); flex-shrink:0; margin-top:auto; z-index:10; box-sizing:border-box; position:absolute; bottom:0; left:0; right:0; width:100%;}
 .navbar button{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:var(--clr-on-surface-variant); transition:all var(--dur-s) var(--ease-emph); min-height:64px;}
 .navbar button .navpill{width:64px; height:32px; border-radius:var(--shape-full); display:flex; align-items:center; justify-content:center; transition:all var(--dur-s) var(--ease-emph);}
@@ -1144,6 +1161,7 @@ function jadwalEfektifTanggal(iso){
 function matkulById(id){ return DB.data.matkul.find(m=>m.id===id); }
 function limitUntukMatkul(m){ return (m.limitAbsenKhusus!=null && m.limitAbsenKhusus!=='') ? Number(m.limitAbsenKhusus) : DB.data.settings.limitAbsenUmum; }
 function riwayatAktif(){ return DB.data.riwayatAbsen.filter(r=>!r.dihapusPada); }
+function sudahAbsenPadaTanggal(matkulId, tanggal){ return riwayatAktif().some(r => r.matkulId === matkulId && r.tanggal === tanggal); }
 function absenTerpakaiUntukMatkul(matkulId){
   return riwayatAktif().filter(r=>r.matkulId===matkulId).reduce((sum,r)=>{
     return sum + (r.pengaliKehadiranSnapshot||1);
@@ -1169,34 +1187,41 @@ function evaluasiRadarHarian(){
   }
   let labelHari = isBesok ? 'Besok' : 'Hari ini';
   if (jadwal.length === 0) {
-    return { status: 'libur', bg: 'var(--clr-surface-container)', fg: 'var(--clr-on-surface)', icon: svg('check'), title: 'Kosong', desc: 'Tidak ada jadwal kelas ' + labelHari.toLowerCase() + '.', labelHari };
+    return [{ status: 'libur', bg: 'var(--clr-surface-container)', fg: 'var(--clr-on-surface)', title: 'Kosong', desc: 'Tidak ada jadwal kelas ' + labelHari.toLowerCase() + '.', list: null, labelHari }];
   }
-  let habis = [], kritis = [], waspada = [];
+  let habis = [], kritis = [], waspada = [], aman = [];
   jadwal.forEach(j => {
     const m = matkulById(j.matkulId);
     if(!m) return;
     const sisa = limitUntukMatkul(m) - absenTerpakaiUntukMatkul(m.id);
     if (sisa <= 0) habis.push(m.namaLengkap);
     else if (sisa === 1) kritis.push(m.namaLengkap);
-    else if (sisa === 2) waspada.push(m.namaLengkap + ' (sisa 2)');
+    else if (sisa === 2) waspada.push(m.namaLengkap);
+    else aman.push(m.namaLengkap);
   });
-  let bg = 'var(--clr-primary-container)', fg = 'var(--clr-on-primary-container)', icon = svg('check');
-  let title = `Aman, ${labelHari.toLowerCase()} boleh bolos`;
-  let desc = 'Semua kelas jatah absennya masih utuh atau aman.';
+
+  const bgHabis = 'var(--clr-error-container)', fgHabis = 'var(--clr-on-error-container)';
+  const bgKritis = '#FCE3B4', fgKritis = '#523A00';
+  const bgWaspada = 'var(--clr-secondary-container)', fgWaspada = 'var(--clr-on-secondary-container)';
+  const bgAman = 'var(--clr-primary-container)', fgAman = 'var(--clr-on-primary-container)';
+
+  const cards = [];
   if (habis.length > 0) {
-    title = `JANGAN BOLOS ${labelHari.toUpperCase()}!`;
-    desc = `Jatah absen sudah habis untuk kelas: ${habis.join(', ')}`;
-    bg = 'var(--clr-error-container)'; fg = 'var(--clr-on-error-container)'; icon = svg('warn');
-  } else if (kritis.length > 0) {
-    title = `Jatah terakhir untuk ${labelHari.toLowerCase()}!`;
-    desc = `Sisa jatah tinggal 1 untuk kelas: ${kritis.join(', ')}`;
-    bg = '#FCE3B4'; fg = '#523A00'; icon = svg('warn');
-  } else if (waspada.length > 0) {
-    title = waspada.length > 1 ? `Waspadai ${waspada.length} kelas ${labelHari.toLowerCase()}` : `Waspadai kelas ${labelHari.toLowerCase()}`;
-    desc = `Beberapa kelas sudah terpakai jatahnya: ${waspada.join(', ')}`;
-    bg = 'var(--clr-secondary-container)'; fg = 'var(--clr-on-secondary-container)'; icon = svg('info');
+    cards.push({ bg: bgHabis, fg: fgHabis, title: `JANGAN BOLOS ${labelHari.toUpperCase()}!`, desc: null, list: habis, labelHari });
   }
-  return { bg, fg, icon, title, desc, labelHari };
+  if (kritis.length > 0) {
+    cards.push({ bg: bgKritis, fg: fgKritis, title: `Jatah terakhir ${labelHari.toLowerCase()}:`, desc: null, list: kritis, labelHari });
+  }
+  if (waspada.length > 0) {
+    cards.push({ bg: bgWaspada, fg: fgWaspada, title: `Waspadai ${waspada.length} kelas ${labelHari.toLowerCase()}:`, desc: null, list: waspada, labelHari });
+  }
+  if (habis.length === 0 && kritis.length === 0 && waspada.length === 0) {
+    cards.push({ bg: bgAman, fg: fgAman, title: `Boleh bolos kok ${labelHari.toLowerCase()}`, desc: 'Semua kelas jatah absennya aman.', list: null, labelHari });
+  } else if (aman.length > 0) {
+    cards.push({ bg: bgAman, fg: fgAman, title: `Kelas yang aman ${labelHari.toLowerCase()}:`, desc: null, list: aman, labelHari });
+  }
+
+  return cards;
 }
 
 function hitungStreak(){
@@ -1722,37 +1747,67 @@ function renderDashboard(){
     root.appendChild(details);
   }
   
-  // INTUITIVE TRACKER: CARD INDIKASI HARIAN
-  const radar = evaluasiRadarHarian();
+  // INTUITIVE TRACKER: CARD INDIKASI HARIAN (CAROUSEL)
+  if (window._radarCarouselInterval) { clearInterval(window._radarCarouselInterval); window._radarCarouselInterval = null; }
+  const radarCards = evaluasiRadarHarian();
   const statCard = el('div','card mt8');
-
-  // MATERIAL 3 EXPRESSIVE HERO WIDGET
   statCard.style.border = 'none';
   statCard.style.background = 'transparent';
   statCard.style.padding = '0';
-
-  statCard.innerHTML = `
-    <div class="statelayer" style="position:relative; overflow:hidden; background:${radar.bg}; color:${radar.fg}; border-radius: 32px; padding: 24px; min-height: 160px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);">
-      
-      <div style="position:absolute; right:-20px; bottom:-30px; width:160px; height:160px; opacity:0.12; pointer-events:none; transform: rotate(-15deg);">
-        ${radar.icon}
-      </div>
-
-      <div class="row gap8" style="position:relative; z-index:2; font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:1.5px; opacity:0.8;">
-        <span style="width:18px; height:18px;">${radar.icon}</span> 
-        RADAR ${radar.labelHari.toUpperCase()}
-      </div>
-
-      <div style="position:relative; z-index:2; font-family:var(--font-display); font-size:34px; font-weight:800; line-height:1.05; letter-spacing:-1px; margin-top:20px;">
-        ${radar.title}
-      </div>
-
-      <div style="position:relative; z-index:2; font-size:14.5px; font-weight:600; opacity:0.85; margin-top:12px; line-height:1.5; max-width:90%;">
-        ${radar.desc}
-      </div>
-    </div>
-  `;
   root.appendChild(statCard);
+
+  let radarIndex = 0;
+
+  // Container dibuat SEKALI SAJA — tidak di-re-render penuh tiap ganti card
+  const containerEl = el('div','radar-card-container statelayer');
+  containerEl.style.cssText = 'position:relative; overflow:hidden; border-radius:32px; padding:28px; min-height:188px; display:flex; flex-direction:column; justify-content:center; cursor:'+(radarCards.length>1?'pointer':'default')+';';
+  const contentEl = el('div','radar-content-anim');
+  containerEl.appendChild(contentEl);
+  statCard.appendChild(containerEl);
+
+  if (radarCards.length > 1) {
+    containerEl.onclick = () => { advanceRadar(); resetRadarTimer(); };
+  }
+
+  function renderRadarCard(){
+    const c = radarCards[radarIndex];
+
+    // Morph background/color via JS -> transisi otomatis lewat CSS transition di .radar-card-container
+    containerEl.style.backgroundColor = c.bg;
+    containerEl.style.color = c.fg;
+
+    const listHtml = c.list ? '<ul class="radar-card-list" style="margin-top:14px; font-size:14.5px; font-weight:600; opacity:0.92; line-height:1.5;">' + c.list.map(n=>'<li>'+n+'</li>').join('') + '</ul>' : '';
+    const descHtml = c.desc ? '<div style="font-size:14.5px; font-weight:600; opacity:0.85; margin-top:12px; line-height:1.5; max-width:92%;">'+c.desc+'</div>' : '';
+    const dotsHtml = radarCards.length > 1 ? '<div class="radar-dots">' + radarCards.map((_,i)=>'<span class="'+(i===radarIndex?'active':'')+'"></span>').join('') + '</div>' : '';
+
+    // Ganti isi konten saja (bukan container) supaya efek fade-up bisa di-restart
+    contentEl.classList.remove('radar-content-anim');
+    void contentEl.offsetWidth; // force reflow agar animasi bisa retrigger
+    contentEl.innerHTML = `
+      <div style="font-family:var(--font-display); font-size:28px; font-weight:800; line-height:1.12; letter-spacing:-0.5px; max-width:92%;">
+        ${c.title}
+      </div>
+      ${descHtml}
+      ${listHtml}
+      ${dotsHtml}
+    `;
+    contentEl.classList.add('radar-content-anim');
+  }
+
+  function advanceRadar(){
+    radarIndex = (radarIndex + 1) % radarCards.length;
+    renderRadarCard();
+  }
+
+  function resetRadarTimer(){
+    if (window._radarCarouselInterval) clearInterval(window._radarCarouselInterval);
+    if (radarCards.length > 1) {
+      window._radarCarouselInterval = setInterval(advanceRadar, 4000);
+    }
+  }
+
+  renderRadarCard();
+  resetRadarTimer();
   
   // Peringatan Limit
   const overList = DB.data.matkul.filter(m=>!m.arsip && absenTerpakaiUntukMatkul(m.id)>limitUntukMatkul(m));
@@ -2041,7 +2096,7 @@ function renderFlowStep1() {
   `;
   body.appendChild(wrap);
 
-  const rawToday = jadwalEfektifTanggal(todayISO());
+  const rawToday = jadwalEfektifTanggal(todayISO()).filter(j => !sudahAbsenPadaTanggal(j.matkulId, todayISO()));
 
   const handleFilterSelection = (filtered) => {
     haptic();
@@ -2225,10 +2280,7 @@ function grid_wa(text){ kirimWA(text); }
 function renderFlowManualSelection() {
   renderFlowHeader('Pilih Manual', 25);
   const body = getFlowBody();
-  const rawToday = jadwalEfektifTanggal(todayISO());
-
-  const wrap = el('div', 'flow-body-content', '');
-  wrap.style.justifyContent = 'flex-start';
+  const rawToday = jadwalEfektifTanggal(todayISO()).filter(j => !sudahAbsenPadaTanggal(j.matkulId, todayISO()));
   wrap.style.paddingTop = '16px';
 
   wrap.innerHTML = `
