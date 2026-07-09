@@ -533,6 +533,7 @@ input[type="checkbox"]:checked::after{
   align-items: flex-start;
   justify-content: flex-start;
   padding: 12px 20px 0;
+  padding-bottom: 140px !important;
   text-align: left;
   gap: 20px;
   animation: slideUp var(--dur-m) var(--ease-emph-decel) both;
@@ -654,15 +655,15 @@ input[type="checkbox"]:checked::after{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: all var(--dur-s) var(--ease-emph), transform 0.25s cubic-bezier(0.2, 0, 0, 1), border-radius 0.25s cubic-bezier(0.2, 0, 0, 1);
+  transition: all var(--dur-s) var(--ease-emph), transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-radius 0.2s ease, background 0.2s ease;
   cursor: pointer;
   min-height: 104px;
 }
-/* MATERIAL 3 EXPRESSIVE: capsule melar & mengotak saat ditekan */
+/* MATERIAL 3 EXPRESSIVE: capsule melar horizontal & mengotak saat ditekan (spring) */
 .flow-btn-choice:active {
-  transform: scaleX(1.04) scaleY(0.92);
+  transform: scaleX(1.06) scaleY(1) !important;
   background: var(--clr-surface-container-highest);
-  border-radius: var(--shape-md);
+  border-radius: var(--shape-md) !important;
 }
 .flow-btn-choice.primary {
   background: var(--clr-primary-container);
@@ -2661,7 +2662,7 @@ function renderPJStep2(){
   const body = getFlowBody(PJ_CTX);
   const wrap = el('div', 'flow-body-content');
   wrap.style.justifyContent = 'flex-start';
-  wrap.style.paddingTop = '16px'; wrap.style.paddingBottom = '160px';
+  wrap.style.paddingTop = '16px';
 
   let selected = PJ.hariBaru || m.hari;
 
@@ -2763,7 +2764,7 @@ function renderPJStep4(){
   const body = getFlowBody(PJ_CTX);
   const wrap = el('div', 'flow-body-content');
   wrap.style.justifyContent = 'flex-start';
-  wrap.style.paddingTop = '16px'; wrap.style.paddingBottom = '160px';
+  wrap.style.paddingTop = '16px';
 
   const durHtml = PJ_DUR_OPTS.map(([v, label, desc]) => `
     <button class="flow-btn-choice ${v === PJ.durasi ? 'primary' : 'tonal'} statelayer" data-v="${v}">
@@ -2782,6 +2783,9 @@ function renderPJStep4(){
     </div>
     <p class="flow-subtitle" style="margin-top:20px;">Berapa lama perubahan ini berlaku?</p>
     <div class="flow-choices-stack" style="gap:10px;margin-top:0;">${durHtml}</div>
+    <div class="flow-footer-actions" id="pj-step4-next-wrap" style="margin-top:16px;">
+      <button class="btn btn-filled statelayer" id="pj-step4-next" style="height:52px;font-size:16px;">Lanjut</button>
+    </div>
     <div style="height: 64px; flex-shrink: 0;"></div>
   `;
   body.appendChild(wrap);
@@ -2789,15 +2793,24 @@ function renderPJStep4(){
 
   $$('.flow-btn-choice', wrap).forEach(btn => {
     btn.onclick = () => {
-      const tgl = $('#pj-tanggal', wrap).value;
-      if(!tgl){ showSnackbar('Tentukan dulu tanggal mulai berlaku'); return; }
       haptic();
-      PJ.tanggalBerlaku = tgl;
       PJ.durasi = btn.dataset.v;
-      PJ.history.push(() => renderPJStep4());
-      renderPJStep5();
+      $$('.flow-btn-choice', wrap).forEach(x => {
+        const active = x.dataset.v === PJ.durasi;
+        x.classList.toggle('primary', active);
+        x.classList.toggle('tonal', !active);
+      });
     };
   });
+
+  $('#pj-step4-next', wrap).onclick = () => {
+    const tgl = $('#pj-tanggal', wrap).value;
+    if(!tgl){ showSnackbar('Tentukan dulu tanggal mulai berlaku'); return; }
+    haptic();
+    PJ.tanggalBerlaku = tgl;
+    PJ.history.push(() => renderPJStep4());
+    renderPJStep5();
+  };
 }
 
 /* ---- STEP 5: PENGALI KEHADIRAN (OPSIONAL) ---- */
@@ -2823,9 +2836,9 @@ function renderPJStep5(){
     </div>
     <div class="flow-input-container ${PJ.pengaliAktif ? '' : 'hidden'}" id="pj-pengali-input-wrap" style="margin-top:8px;">
       <div class="field"><label>Setara berapa kehadiran</label><input type="number" id="pj-pengali-val" min="2" value="${PJ.pengaliKehadiran || 2}"></div>
-      <div class="flow-footer-actions">
-        <button class="btn btn-filled statelayer" id="pj-step5-next" style="height:52px;font-size:16px;">Lanjut</button>
-      </div>
+    </div>
+    <div class="flow-footer-actions" style="margin-top:16px;">
+      <button class="btn btn-filled statelayer" id="pj-step5-next" style="height:52px;font-size:16px;">Lanjut</button>
     </div>
   `;
   body.appendChild(wrap);
@@ -2837,8 +2850,9 @@ function renderPJStep5(){
     haptic();
     PJ.pengaliAktif = false;
     PJ.pengaliKehadiran = 1;
-    PJ.history.push(() => renderPJStep5());
-    renderPJStep6();
+    $('#pj-pengali-normal', wrap).classList.remove('tonal'); $('#pj-pengali-normal', wrap).classList.add('primary');
+    $('#pj-pengali-lebih', wrap).classList.remove('primary'); $('#pj-pengali-lebih', wrap).classList.add('tonal');
+    inputWrap.classList.add('hidden');
   };
   $('#pj-pengali-lebih', wrap).onclick = () => {
     haptic();
@@ -2849,7 +2863,9 @@ function renderPJStep5(){
   };
   $('#pj-step5-next', wrap).onclick = () => {
     haptic();
-    PJ.pengaliKehadiran = Number($('#pj-pengali-val', wrap).value) || 2;
+    if(PJ.pengaliAktif){
+      PJ.pengaliKehadiran = Number($('#pj-pengali-val', wrap).value) || 2;
+    }
     PJ.history.push(() => renderPJStep5());
     renderPJStep6();
   };
