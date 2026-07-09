@@ -278,7 +278,7 @@ input[type="checkbox"]:checked::after{
 .navbar button span{font-size:12px; font-weight:600;}
 
 /* ---- FAB ---- */
-.fab-wrap{position:absolute; right:20px; bottom:calc(100px + var(--sab)); display:flex; flex-direction:column; align-items:flex-end; gap:12px; z-index:40;}
+.fab-wrap{position:absolute; right:20px; bottom:calc(100px + var(--sab)); display:flex; flex-direction:column; align-items:flex-end; gap:12px; z-index:40; pointer-events:none;}
 .fab{display:flex; align-items:center; gap:10px; height:56px; padding:0 22px; border-radius:var(--shape-lg); background:var(--clr-primary-container); color:var(--clr-on-primary-container); box-shadow:0 4px 12px rgba(0,0,0,.15); font-size:15px; font-weight:600; transition:border-radius var(--dur-s) var(--ease-emph), transform var(--dur-s) var(--ease-emph); animation:fab-in var(--dur-m) var(--ease-emph-decel) both;}
 .fab:active{border-radius:var(--shape-sm); transform:scale(.96);}
 .fab.mini{height:48px; padding:0 18px; background:var(--clr-tertiary-container); color:var(--clr-on-tertiary-container);}
@@ -290,7 +290,7 @@ input[type="checkbox"]:checked::after{
 .fab-wrap.open .fab-option{opacity:1; transform:translateY(0) scale(1); pointer-events:auto;}
 .fab-wrap.open .fab-option:nth-child(1){transition-delay:30ms;}
 .fab-wrap.open .fab-option:nth-child(2){transition-delay:80ms;}
-.fab-main{z-index:3; width:56px; padding:0; justify-content:center;}
+.fab-main{z-index:3; width:56px; padding:0; justify-content:center; pointer-events:auto;}
 .fab-main .icon{transition:transform var(--dur-m) var(--ease-emph);}
 .fab-wrap.open .fab-main .icon{transform:rotate(45deg);}
 .fab-wrap.open .fab-main{background:var(--clr-secondary-container); color:var(--clr-on-secondary-container);}
@@ -1922,7 +1922,8 @@ function renderQuestionD() {
   body.appendChild(wrap);
 
   const goNext = () => {
-    FLOW.history.push(() => renderQuestionD());
+    const idxSnapshot = index;
+    FLOW.history.push(() => { FLOW.currentIndex = idxSnapshot; renderQuestionD(); });
     FLOW.currentIndex++;
     processCurrentCourse();
   };
@@ -1936,15 +1937,15 @@ function renderQuestionD() {
         title: 'Kirim laporan izin',
         body: 'Pilih media pengiriman template presensi kamu.',
         actions: [
-          { label: 'WhatsApp', style: 'btn-filled', onClick: () => kirimWA(text) },
-          { label: 'Gunakan Sistem Share', style: 'btn-tonal', onClick: () => navigator.share({ text }).catch(() => {}) },
-          { label: 'Nanti Saja', style: 'btn-text' }
+          { label: 'WhatsApp', style: 'btn-filled', onClick: () => { kirimWA(text); goNext(); } },
+          { label: 'Gunakan Sistem Share', style: 'btn-tonal', onClick: () => { navigator.share({ text }).catch(() => {}); goNext(); } },
+          { label: 'Nanti Saja', style: 'btn-text', onClick: () => goNext() }
         ]
       });
     } else {
       kirimWA(text);
+      goNext();
     }
-    goNext();
   };
 
   $('#btn-share-skip', wrap).onclick = () => {
