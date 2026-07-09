@@ -257,6 +257,18 @@ a{color:inherit; text-decoration:none;}
 .btn[disabled]{opacity:.38; pointer-events:none;}
 .btn svg{width:24px; height:24px; flex-shrink:0;}
 
+/* Efek melar untuk Card dan List saat ditekan */
+.card.statelayer:active, .card-outlined.statelayer:active, .list-item.statelayer:active, .recap-item-card:active {
+  transform: scaleX(1.02) scaleY(0.96) !important;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+/* Efek melar untuk tombol umum (Nav, FAB, Btn biasa) */
+.btn:active, .fab:active, .nav-btn:active .navpill {
+  transform: scaleX(1.08) scaleY(0.92) !important;
+  border-radius: var(--shape-md) !important;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-radius 0.2s ease !important;
+}
+
 /* ---- icon ---- */
 .icon{width:24px; height:24px; display:inline-block; flex-shrink:0;}
 
@@ -641,6 +653,8 @@ input[type="checkbox"]:checked::after{
   margin-left: auto;
   margin-right: auto;
   margin-bottom: auto;
+  overflow: visible !important;
+  padding: 0 4px;
 }
 .flow-btn-choice {
   width: 100%;
@@ -658,6 +672,9 @@ input[type="checkbox"]:checked::after{
   transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-radius 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s ease, color 0.3s ease !important;
   cursor: pointer;
   min-height: 104px;
+  will-change: transform, border-radius;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 /* MATERIAL 3 EXPRESSIVE: capsule melar horizontal & mengotak saat ditekan (spring) */
 .flow-btn-choice:active {
@@ -3792,56 +3809,11 @@ document.addEventListener('pointerdown', (e) => {
   setTimeout(() => ripple.remove(), 500);
 });
 /* ==========================================================
-   MATERIAL 3 EXPRESSIVE — Physics-based Rubber-band
-   Panggil initPhysicsInteractions() sekali saat app init
-   (sudah di-hook otomatis di dalam initApp()).
+   MATERIAL 3 EXPRESSIVE — Physics-based Interactions
+   (Rubber-band scroll telah dihapus karena glitchy & bentrok
+   dengan native scroll pada perangkat sentuh)
    ========================================================== */
 function initPhysicsInteractions(){
-  // ---- Rubber-band scroll untuk .scroll-y ----
-  document.querySelectorAll('.scroll-y').forEach(scroller=>{
-    let startY = 0;
-    let pulling = false;
-    let dir = 0; // 1 = tarik ke bawah di batas atas, -1 = tarik ke atas di batas bawah
-
-    scroller.addEventListener('touchstart', (e)=>{
-      startY = e.touches[0].clientY;
-      pulling = false;
-      dir = 0;
-    }, {passive:true});
-
-    scroller.addEventListener('touchmove', (e)=>{
-      const atTop = scroller.scrollTop <= 0;
-      const atBottom = (scroller.scrollTop + scroller.clientHeight) >= scroller.scrollHeight - 1;
-      const currentY = e.touches[0].clientY;
-      const deltaY = currentY - startY;
-
-      if(atTop && deltaY > 0){
-        dir = 1; pulling = true;
-      } else if(atBottom && deltaY < 0){
-        dir = -1; pulling = true;
-      } else if(!atTop && !atBottom){
-        pulling = false;
-      }
-
-      if(pulling){
-        const friction = 0.3;
-        const y = deltaY * friction;
-        scroller.classList.remove('scroll-rubber');
-        scroller.style.transform = `translateY(${dir === 1 ? y : y}px)`;
-      }
-    }, {passive:true});
-
-    function snapBack(){
-      if(pulling){
-        scroller.classList.add('scroll-rubber');
-        scroller.style.transform = 'translateY(0px)';
-        pulling = false;
-        setTimeout(()=> scroller.classList.remove('scroll-rubber'), 500);
-      }
-    }
-    scroller.addEventListener('touchend', snapBack, {passive:true});
-    scroller.addEventListener('touchcancel', snapBack, {passive:true});
-  });
 }
 
 function initApp(){
@@ -3849,7 +3821,6 @@ function initApp(){
   applyTheme();
   wireNav();
   initTabSwipe();
-  initPhysicsInteractions();
   document.querySelectorAll('.scroll-y').forEach(el => {
     el.style.transformOrigin = 'top center';
     el.addEventListener('scroll', () => {
