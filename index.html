@@ -787,7 +787,7 @@ const ICONS = {
   close:'<path d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/>',
   edit:'<path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>',
   trash:'<path d="M6 21c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v14zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>',
-  moreV:'<path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>',
+  moreV:'<path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>',
   calendar:'<path d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zM5 9h14v11H5V9z"/>',
   clock:'<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.2 3.1.8-1.3-4.5-2.7z"/>',
   swap:'<path d="M9.5 3 5 7.5 9.5 12V9H17V6H9.5V3zm5 9L19 16.5 14.5 21v-3H7v-3h7.5v-3z"/>',
@@ -824,8 +824,8 @@ function defaultDB(){
     riwayatAbsen:[],
     settings:{ 
       limitAbsenUmum:3, 
-      temaMode:'system', 
-      colorTheme:'brown', 
+      temaMode:'dark', 
+      colorTheme:'cyan', 
       formatPesanWA:'Halo Kak, selamat {waktu}.\n\nSaya ingin mengabarkan bahwa hari ini saya berhalangan hadir di perkuliahan Kakak.\n\nNama: {nama}\nNIM: {nim}\nMata Kuliah: {matkul}\nTanggal: {tanggal}\nAlasan: {alasan_kata}\nKeterangan: {keterangan}\n\nTerima kasih banyak atas pengertiannya, Kak.', 
       namaPJdefault:{}, 
       reminderAktif:false 
@@ -964,6 +964,22 @@ function openSidePanel(buildFn){
   buildFn(panel, closePanel);
   pushStatusBarLayer('--clr-surface-container-high');
   function closePanel(){ panel.classList.remove('show'); scrim.classList.remove('show'); popStatusBarLayer(); }
+
+  let spStartX = 0, spStartY = 0;
+  panel.addEventListener('touchstart', (e) => {
+    spStartX = e.touches[0].clientX;
+    spStartY = e.touches[0].clientY;
+  }, {passive: true});
+  
+  panel.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - spStartX;
+    const dy = e.changedTouches[0].clientY - spStartY;
+    // Deteksi swipe ke kanan (minimal 50px dan lebih dominan horizontal)
+    if (dx > 50 && Math.abs(dx) > Math.abs(dy)) {
+      closePanel();
+    }
+  });
+
   scrim.classList.add('show');
   scrim.onclick = ()=> navPop();
   requestAnimationFrame(()=>panel.classList.add('show'));
@@ -1028,7 +1044,7 @@ function jadwalEfektifTanggal(iso){
       const already = hasil.findIndex(h=>h.matkulId===o.matkulId && h.sumber==='override');
       if(already>-1) hasil.splice(already,1);
     }
-    hasil.push({ matkulId:o.matkulId, jamMulai:o.jamMulai, jamSelesai:o.jamSelesai, mode:m.modeDefault, sumber:'override', pengali:o.pengaliKehadiran||1, overrideId:o.id });
+    hasil.push({ matkulId:o.matkulId, jamMulai:o.jamBaruMulai, jamSelesai:o.jamBaruSelesai, mode:m.modeDefault, sumber:'override', pengali:o.pengaliKehadiran||1, overrideId:o.id });
   });
   hasil.sort((a,b)=> hmToMin(a.jamMulai)-hmToMin(b.jamMulai));
   return hasil;
@@ -2555,7 +2571,7 @@ function renderPJStep2(){
   const body = getFlowBody(PJ_CTX);
   const wrap = el('div', 'flow-body-content');
   wrap.style.justifyContent = 'flex-start';
-  wrap.style.paddingTop = '16px';
+  wrap.style.paddingTop = '16px'; wrap.style.paddingBottom = '100px';
 
   let selected = PJ.hariBaru || m.hari;
 
@@ -2657,7 +2673,7 @@ function renderPJStep4(){
   const body = getFlowBody(PJ_CTX);
   const wrap = el('div', 'flow-body-content');
   wrap.style.justifyContent = 'flex-start';
-  wrap.style.paddingTop = '16px';
+  wrap.style.paddingTop = '16px'; wrap.style.paddingBottom = '100px';
 
   const durHtml = PJ_DUR_OPTS.map(([v, label, desc]) => `
     <button class="flow-btn-choice ${v === PJ.durasi ? 'primary' : 'tonal'} statelayer" data-v="${v}">
@@ -3270,7 +3286,7 @@ function renderSettingsResetSemester(){
 function renderSettingsTampilan(){
   settingsSubScreen('Kustomisasi Tampilan', (body)=>{
     body.appendChild(el('div','txt-title-sm mt8','Tema Gelap / Terang'));
-    const seg = el('div','segmented mt12'); seg.innerHTML='<button data-v="system">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button>';
+    const seg = el('div','segmented mt12'); seg.innerHTML='<button data-v="light">Light</button><button data-v="dark">Dark</button>';
     $$('button',seg).forEach(b=> b.classList.toggle('active', b.dataset.v===DB.data.settings.temaMode));
     seg.addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; DB.data.settings.temaMode=b.dataset.v; applyTheme(); dbSaveDebounced(); $$('button',seg).forEach(x=>x.classList.toggle('active',x===b)); });
     body.appendChild(seg);
