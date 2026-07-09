@@ -2068,26 +2068,26 @@ function renderQuestionA() {
     <p class="flow-subtitle">Waktu perkuliahan: ${courseConfig.jamMulai} - ${courseConfig.jamSelesai}</p>
     
     <div class="flow-choices-stack">
-      <button class="flow-btn-choice tonal statelayer" id="btn-choice-no">
+      <button class="flow-btn-choice primary statelayer" id="btn-choice-tidak">
         <span>Tidak</span>
-        ${svg('check')}
-      </button>
-      <button class="flow-btn-choice primary statelayer" id="btn-choice-yes">
-        <span>Ya</span>
         ${svg('arrowR')}
+      </button>
+      <button class="flow-btn-choice tonal statelayer" id="btn-choice-ya">
+        <span>Ya</span>
+        ${svg('check')}
       </button>
     </div>
   `;
   body.appendChild(wrap);
 
-  $('#btn-choice-yes', wrap).onclick = () => {
+  $('#btn-choice-tidak', wrap).onclick = () => {
     haptic();
     FLOW.results[m.id] = { absent: true, alasan: 'izin', keterangan: '' };
     FLOW.history.push(() => renderQuestionA());
     renderQuestionB();
   };
 
-  $('#btn-choice-no', wrap).onclick = () => {
+  $('#btn-choice-ya', wrap).onclick = () => {
     haptic();
     FLOW.results[m.id] = { absent: false };
     FLOW.history.push(() => renderQuestionA());
