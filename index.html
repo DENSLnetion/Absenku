@@ -830,7 +830,8 @@ input[type="checkbox"]:checked::after{
   <div id="scr-main" class="screen">
     <div id="tabs-wrap" class="tabs-wrap">
       <div id="tab-dashboard" class="scroll-y pad-h tab-panel" data-tab-index="0" style="display:flex;flex-direction:column;gap:16px;padding-top:16px;padding-bottom:100px;"></div>
-      <div id="tab-riwayat" class="stack tab-panel" data-tab-index="1" style="overflow:hidden;"></div>
+      <div id="tab-kelas" class="scroll-y pad-h tab-panel" data-tab-index="1" style="display:flex;flex-direction:column;gap:16px;padding-top:16px;padding-bottom:100px;"></div>
+      <div id="tab-riwayat" class="stack tab-panel" data-tab-index="2" style="overflow:hidden;"></div>
     </div>
     <div id="fab-scrim" class="fab-scrim"></div>
     <div class="fab-wrap" id="fab-wrap"></div>
@@ -838,6 +839,10 @@ input[type="checkbox"]:checked::after{
       <button class="nav-btn active" data-tab="dashboard">
         <span class="navpill"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M4 13h6V4H4v9zm0 7h6v-5H4v5zm10 0h6V11h-6v9zm0-16v5h6V4h-6z"/></svg></span>
         <span>Dashboard</span>
+      </button>
+      <button class="nav-btn" data-tab="kelas">
+        <span class="navpill"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/></svg></span>
+        <span>Kelas</span>
       </button>
       <button class="nav-btn" data-tab="riwayat">
         <span class="navpill"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7V3zm.5 4H12v6l4.7 2.8.8-1.3-4-2.4V7z"/></svg></span>
@@ -1161,7 +1166,7 @@ function jadwalEfektifTanggal(iso){
 function matkulById(id){ return DB.data.matkul.find(m=>m.id===id); }
 function limitUntukMatkul(m){ return (m.limitAbsenKhusus!=null && m.limitAbsenKhusus!=='') ? Number(m.limitAbsenKhusus) : DB.data.settings.limitAbsenUmum; }
 function riwayatAktif(){ return DB.data.riwayatAbsen.filter(r=>!r.dihapusPada); }
-function sudahAbsenPadaTanggal(matkulId, tanggal){ return riwayatAktif().some(r => r.matkulId === matkulId && r.tanggal === tanggal); }
+function sudahAbsenPadaTanggal(matkulId, tanggal){ return riwayatAktif().some(r => r.matkulId === matkulId && r.tanggal === tanggal && !r.inputLama); }
 function absenTerpakaiUntukMatkul(matkulId){
   return riwayatAktif().filter(r=>r.matkulId===matkulId).reduce((sum,r)=>{
     return sum + (r.pengaliKehadiranSnapshot||1);
@@ -1780,36 +1785,6 @@ function renderDashboard(){
     '<div class="txt-body muted mt8">'+hariIni+', '+fmtTanggalPanjang(todayISO())+'</div>';
   root.appendChild(header);
   
-  // Kuliah Hari Ini
-  const jadwalCard = el('div','card mt8');
-  if(jadwalHariIni.length===0){
-    jadwalCard.innerHTML = '<div class="txt-body muted">Tidak ada kelas terjadwal hari ini.</div>';
-  } else {
-    const nowM = nowMinutes();
-    jadwalCard.innerHTML = jadwalHariIni.map(j=>{
-      const m = matkulById(j.matkulId); if(!m) return '';
-      const start=hmToMin(j.jamMulai), end=hmToMin(j.jamSelesai);
-      let status = nowM<start? 'Belum mulai' : (nowM>end? 'Selesai':'Berlangsung');
-      let color = nowM<start? 'var(--clr-on-surface-variant)' : (nowM>end? 'var(--clr-outline)':'var(--clr-primary)');
-      return '<div class="row between" style="padding:10px 0;align-items:flex-start;"><div class="row gap12" style="align-items:flex-start;"><span class="dot" style="background:'+(j.mode==='online'?'var(--clr-online)':'var(--clr-offline)')+';margin-top:7px;"></span><span class="txt-body-lg" style="font-weight:700;">'+m.namaLengkap+'</span></div><div class="stack" style="align-items:flex-end;gap:4px;flex-shrink:0;margin-left:12px;"><span class="txt-body" style="color:var(--clr-on-surface-variant);white-space:nowrap;font-weight:500;">'+j.jamMulai+'-'+j.jamSelesai+'</span><span class="txt-body" style="color:'+color+';font-weight:700;white-space:nowrap;">'+status+'</span></div></div>';
-    }).join('<div class="divider"></div>');
-  }
-  root.appendChild(jadwalCard);
-  
-  // Override List (Jadwal Pindahan Aktif) - taruh di atas, tepat di bawah jadwal hari ini
-  const activeOv = DB.data.jadwalOverride.filter(o=>o.status==='aktif');
-  if(activeOv.length){
-    const details = el('details','card mt8');
-    details.innerHTML = '<summary class="txt-title-sm statelayer" style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;outline:none;">Jadwal Pindahan Aktif ('+activeOv.length+')'+svg('arrowR')+'</summary>';
-    const inner = el('div','stack gap8 mt12');
-    activeOv.forEach(o=>{
-      const m = matkulById(o.matkulId);
-      inner.innerHTML += '<div class="txt-body muted"><b>'+(m?m.namaLengkap:'?')+'</b> &rarr; '+o.hariBaru+' '+o.jamBaruMulai+'-'+o.jamBaruSelesai+'</div>';
-    });
-    details.appendChild(inner);
-    root.appendChild(details);
-  }
-  
   // INTUITIVE TRACKER: CARD INDIKASI HARIAN (CAROUSEL)
   if (window._radarCarouselInterval) { clearInterval(window._radarCarouselInterval); window._radarCarouselInterval = null; }
   const radarCards = evaluasiRadarHarian();
@@ -1932,6 +1907,36 @@ function renderDashboard(){
   renderRadarCard();
   resetRadarTimer();
   
+  // Override List (Jadwal Pindahan Aktif) - di bawah Radar Card
+  const activeOv = DB.data.jadwalOverride.filter(o=>o.status==='aktif');
+  if(activeOv.length){
+    const details = el('details','card mt8');
+    details.innerHTML = '<summary class="txt-title-sm statelayer" style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;outline:none;">Jadwal Pindahan Aktif ('+activeOv.length+')'+svg('arrowR')+'</summary>';
+    const inner = el('div','stack gap8 mt12');
+    activeOv.forEach(o=>{
+      const m = matkulById(o.matkulId);
+      inner.innerHTML += '<div class="txt-body muted"><b>'+(m?m.namaLengkap:'?')+'</b> &rarr; '+o.hariBaru+' '+o.jamBaruMulai+'-'+o.jamBaruSelesai+'</div>';
+    });
+    details.appendChild(inner);
+    root.appendChild(details);
+  }
+  
+  // Kuliah Hari Ini
+  const jadwalCard = el('div','card mt8');
+  if(jadwalHariIni.length===0){
+    jadwalCard.innerHTML = '<div class="txt-body muted">Tidak ada kelas terjadwal hari ini.</div>';
+  } else {
+    const nowM = nowMinutes();
+    jadwalCard.innerHTML = jadwalHariIni.map(j=>{
+      const m = matkulById(j.matkulId); if(!m) return '';
+      const start=hmToMin(j.jamMulai), end=hmToMin(j.jamSelesai);
+      let status = nowM<start? 'Belum mulai' : (nowM>end? 'Selesai':'Berlangsung');
+      let color = nowM<start? 'var(--clr-on-surface-variant)' : (nowM>end? 'var(--clr-outline)':'var(--clr-primary)');
+      return '<div class="row between statelayer" style="padding:10px 0;align-items:flex-start;cursor:pointer;" onclick="haptic(); openDetailProgressMatkul(\''+m.id+'\')"><div class="row gap12" style="align-items:flex-start;"><span class="dot" style="background:'+(j.mode==='online'?'var(--clr-online)':'var(--clr-offline)')+';margin-top:7px;"></span><span class="txt-body-lg" style="font-weight:700;">'+m.namaLengkap+'</span></div><div class="stack" style="align-items:flex-end;gap:4px;flex-shrink:0;margin-left:12px;"><span class="txt-body" style="color:var(--clr-on-surface-variant);white-space:nowrap;font-weight:500;">'+j.jamMulai+'-'+j.jamSelesai+'</span><span class="txt-body" style="color:'+color+';font-weight:700;white-space:nowrap;">'+status+'</span></div></div>';
+    }).join('<div class="divider"></div>');
+  }
+  root.appendChild(jadwalCard);
+  
   // Peringatan Limit
   const overList = DB.data.matkul.filter(m=>!m.arsip && absenTerpakaiUntukMatkul(m.id)>limitUntukMatkul(m));
   if(overList.length){
@@ -1941,22 +1946,47 @@ function renderDashboard(){
     root.appendChild(warnCard);
   }
   
-  // Per Mata Kuliah Progress List
-  const listCard = el('div','stack gap12 mt12');
-  DB.data.matkul.filter(m=>!m.arsip).forEach(m=>{
-    const used = absenTerpakaiUntukMatkul(m.id), lim = limitUntukMatkul(m)||1;
-    const pct = clamp(used/lim,0,1);
-    const color = pct>=1?'var(--clr-error)':(pct>=0.66?'#C08A2E':'var(--clr-primary)');
-    const card = el('div','card row between statelayer');
-    card.style.cursor = 'pointer';
-    card.onclick = () => { haptic(); openDetailProgressMatkul(m.id); };
-    card.innerHTML = '<div class="stack" style="gap:4px;flex:1;"><div class="txt-body-lg" style="font-weight:700;">'+m.namaLengkap+'</div>'+
-      '<div class="progressbar mt12" style="width:100%"><div style="width:'+(pct*100)+'%;background:'+color+'"></div></div></div>'+
-      '<div class="txt-title-sm" style="margin-left:18px;color:'+color+';font-size:18px;font-family:var(--font-display);">'+used+'/'+lim+'</div>';
-    listCard.appendChild(card);
-  });
-  root.appendChild(listCard);
   setTimeout(() => { const ring = $('.animated-ring', root); if(ring) ring.style.strokeDashoffset = ring.dataset.off; }, 50);
+}
+
+/* =========================================================
+   TAB KELAS — Daftar Kelas per Hari
+   ========================================================= */
+function renderKelas(){
+  const root = $('#tab-kelas');
+  root.innerHTML='';
+
+  const header = el('div','txt-headline');
+  header.textContent = 'Daftar Kelas';
+  root.appendChild(header);
+
+  const activeOvByMatkul = {};
+  DB.data.jadwalOverride.filter(o=>o.status==='aktif').forEach(o=>{ activeOvByMatkul[o.matkulId] = true; });
+
+  for(let hariIdx=0; hariIdx<HARI.length; hariIdx++){
+    const items = DB.data.matkul.filter(m=>!m.arsip && m.hari===HARI[hariIdx]);
+    if(!items.length) continue;
+
+    const hariHeader = el('div','txt-title-sm muted mt12');
+    hariHeader.style.cssText = 'position:sticky;top:0;background:var(--clr-surface);padding:8px 0;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;';
+    hariHeader.textContent = HARI[hariIdx];
+    root.appendChild(hariHeader);
+
+    items.forEach(m=>{
+      const used = absenTerpakaiUntukMatkul(m.id), lim = limitUntukMatkul(m)||1;
+      const pct = clamp(used/lim,0,1);
+      const color = pct>=1?'var(--clr-error)':(pct>=0.66?'#C08A2E':'var(--clr-primary)');
+      const card = el('div','card-outlined statelayer stack gap8 mt8');
+      card.style.cursor = 'pointer';
+      card.onclick = () => { haptic(); openDetailProgressMatkul(m.id); };
+      const pindahanChip = activeOvByMatkul[m.id] ? '<span class="chip" style="font-size:11px;padding:2px 10px;">Pindahan</span>' : '';
+      card.innerHTML = '<div class="row between"><span class="txt-body-lg" style="font-weight:700;">'+m.namaLengkap+'</span>'+pindahanChip+'</div>'+
+        '<div class="row gap12"><span class="txt-body muted">'+m.jamMulai+' - '+m.jamSelesai+'</span><span class="txt-body muted">'+(m.modeDefault==='online'?'Online':'Offline')+'</span></div>'+
+        '<div class="progressbar mt8" style="width:100%"><div style="width:'+(pct*100)+'%;background:'+color+'"></div></div>'+
+        '<div class="txt-body" style="color:'+color+';font-weight:700;">'+used+'/'+lim+'</div>';
+      root.appendChild(card);
+    });
+  }
 }
 
 /* =========================================================
@@ -3978,7 +4008,7 @@ function ringSVG(pct, size, stroke, colorVar){
     '<circle class="ring-bg" cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" stroke-width="'+stroke+'"/>'+
     '<circle class="ring-fg animated-ring" cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" stroke-width="'+stroke+'" style="stroke:'+(colorVar||'var(--clr-primary)')+'" stroke-dasharray="'+c+'" stroke-dashoffset="'+c+'" data-off="'+off+'"/></svg>';
 }
-const TABS_ORDER = ['dashboard','riwayat'];
+const TABS_ORDER = ['dashboard','kelas','riwayat'];
 function getTabEls(){ return TABS_ORDER.map(id=>document.getElementById('tab-'+id)); }
 function layoutTabs(activeIndex, animate){
   if(animate===undefined) animate=true;
@@ -4004,12 +4034,13 @@ function layoutTabs(activeIndex, animate){
 }
 function scrollElOfTab(tab){
   if(tab==='dashboard') return document.getElementById('tab-dashboard');
+  if(tab==='kelas') return document.getElementById('tab-kelas');
   if(tab==='riwayat') return document.querySelector('#tab-riwayat .scroll-y');
   return null;
 }
 function syncActiveTabUI(){
   $$('.nav-btn').forEach(b=> b.classList.toggle('active', b.dataset.tab===APP.activeTab));
-  if(APP.activeTab==='dashboard'){ renderDashboard(); } else { renderRiwayat(); }
+  if(APP.activeTab==='dashboard'){ renderDashboard(); } else if(APP.activeTab==='kelas'){ renderKelas(); } else { renderRiwayat(); }
   const activeEl = scrollElOfTab(APP.activeTab);
   if(activeEl) activeEl.scrollTop = APP.scrollPos[APP.activeTab]||0;
   layoutTabs(TABS_ORDER.indexOf(APP.activeTab));
@@ -4105,7 +4136,7 @@ function initTabSwipe(){
   container.addEventListener('touchend', onEnd);
 }
 
-const APP = { activeTab:'dashboard', scrollPos:{dashboard:0, riwayat:0} };
+const APP = { activeTab:'dashboard', scrollPos:{dashboard:0, kelas:0, riwayat:0} };
 function bootMain(){
   showScreen('scr-main');
   renderFab();
