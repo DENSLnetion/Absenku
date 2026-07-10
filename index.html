@@ -1231,7 +1231,8 @@ function evaluasiRadarHarian(){
   if (kritisKedepan.length > 0) cards.push({ bg: bgKritis, fg: fgKritis, title: `Jatah terakhir untuk kedepannya:`, desc: null, list: kritisKedepan, labelHari, status: 'kritis', isKedepan: true });
   if (waspadaKedepan.length > 0) cards.push({ bg: bgWaspada, fg: fgWaspada, title: `Waspada sisa jatah menipis kedepannya:`, desc: null, list: waspadaKedepan, labelHari, status: 'waspada', isKedepan: true });
 
-  if (habis.length === 0 && kritis.length === 0 && waspada.length === 0) {
+  const adaKedepan = habisKedepan.length > 0 || kritisKedepan.length > 0 || waspadaKedepan.length > 0 || amanKedepan.length > 0;
+  if (habis.length === 0 && kritis.length === 0 && waspada.length === 0 && !adaKedepan) {
     if (aman.length > 0) cards.push({ bg: bgAman, fg: fgAman, title: `Boleh bolos kok ${labelHari.toLowerCase()}`, desc: 'Semua kelas jatah absennya aman.', list: null, labelHari, status: 'aman', isKedepan: false });
   } else if (aman.length > 0) {
     cards.push({ bg: bgAman, fg: fgAman, title: `Kelas yang aman ${labelHari.toLowerCase()}:`, desc: null, list: aman, labelHari, status: 'aman', isKedepan: false });
@@ -1814,22 +1815,22 @@ function renderDashboard(){
 
     // Skala ukuran font & jarak ekstra besar saat item sedikit — berlaku sama
     // untuk semua status (habis/kritis/waspada/aman) biar layout konsisten.
-    let titleFontSize = 'clamp(26px, 7vw, 32px)';
+    let titleFontSize = 'clamp(22px, 6vw, 28px)';
     let listFontSize = 'clamp(14px, 4vw, 15px)';
     let listGap = '8px';
     let descFontSize = 'clamp(14px, 4vw, 15px)';
 
     if (count <= 1) {
       // Jika 1 matkul / kosong: font jumbo agar judul padat (min 3 baris) & ruang terisi penuh
-      titleFontSize = 'clamp(36px, 10vw, 46px)';
-      listFontSize = 'clamp(20px, 5.5vw, 24px)';
-      listGap = '18px';
-      descFontSize = 'clamp(18px, 5vw, 20px)';
+      titleFontSize = 'clamp(28px, 8vw, 34px)';
+      listFontSize = 'clamp(18px, 5vw, 20px)';
+      listGap = '14px';
+      descFontSize = 'clamp(16px, 4.5vw, 18px)';
     } else if (count === 2) {
-      titleFontSize = 'clamp(30px, 8.5vw, 38px)';
-      listFontSize = 'clamp(17px, 4.8vw, 19px)';
-      listGap = '12px';
-      descFontSize = 'clamp(16px, 4.5vw, 17px)';
+      titleFontSize = 'clamp(24px, 7vw, 30px)';
+      listFontSize = 'clamp(16px, 4.5vw, 18px)';
+      listGap = '10px';
+      descFontSize = 'clamp(15px, 4vw, 16px)';
     }
 
     // Dekorasi lingkaran blur khas M3 Expressive — sekarang tampil di SEMUA
@@ -1841,12 +1842,14 @@ function renderDashboard(){
     // Badge kecil di atas judul — sekarang seragam untuk SEMUA status, hanya
     // ikon & labelnya yang beda sesuai tingkat urgensi (habis/kritis/waspada/aman).
     let finalBadgeLabel = badgeCfg ? badgeCfg.label : '';
+    let finalBadgeIcon = badgeCfg ? badgeCfg.icon : '';
     if (badgeCfg && c.isKedepan) {
       finalBadgeLabel = 'UNTUK KEDEPANNYA';
+      finalBadgeIcon = 'bell';
     }
 
     const badgeHtml = badgeCfg
-      ? `<div style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:${c.fg}; color:${c.bg}; opacity:0.9; font-size:12px; font-weight:800; letter-spacing:0.3px; text-transform:uppercase; width:fit-content; margin-bottom:14px;">${svg(badgeCfg.icon)}<span>${finalBadgeLabel}</span></div>`
+      ? `<div style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:${c.fg}; color:${c.bg}; opacity:0.9; font-size:12px; font-weight:800; letter-spacing:0.3px; text-transform:uppercase; width:fit-content; margin-bottom:14px;">${svg(finalBadgeIcon)}<span>${finalBadgeLabel}</span></div>`
       : '';
 
     // Menghilangkan &bull; karena sudah di-generate via CSS ::before
