@@ -1267,21 +1267,20 @@ function evaluasiRadarHarian(){
   const adaKedepan = habisKedepan.length > 0 || kritisKedepan.length > 0 || waspadaKedepan.length > 0 || amanKedepan.length > 0;
   
   if (habis.length === 0 && kritis.length === 0 && waspada.length === 0 && !adaKedepan) {
-    if (aman.length > 0) cards.push({ bg: bgAman, fg: fgAman, title: `Aman semua ${labelHari.toLowerCase()}!`, desc: 'Boleh bolos kok kalau mau.', list: null, labelHari, status: 'aman', isKedepan: false });
-  } else if (aman.length > 0) {
+    if (aman.length > 0) cards.push({ bg: bgAman, fg: fgAman, title: `${labelHari} aman semua kok`, desc: 'Boleh bolos kok kalau mau.', list: null, labelHari, status: 'aman', isKedepan: false });
     cards.push({ bg: bgAman, fg: fgAman, title: `Kelas yang aman ${labelHari.toLowerCase()}:`, desc: null, list: aman, labelHari, status: 'aman', isKedepan: false });
   }
 
   if (amanKedepan.length > 0) {
     const semuaAmanKedepan = (amanKedepan.length === jadwal.length) && jadwal.length > 0;
-    const tAmanKedepan = semuaAmanKedepan ? 'Aman semua kedepannya!' : 'Kelas yang aman kedepannya:';
+    const tAmanKedepan = semuaAmanKedepan ? 'Kedepannya aman semua kok' : 'Kelas yang aman kedepannya:';
     const dAmanKedepan = semuaAmanKedepan ? 'Semua jatah absen kelas masih banyak.' : null;
     const lAmanKedepan = semuaAmanKedepan ? null : amanKedepan;
     cards.push({ bg: bgAman, fg: fgAman, title: tAmanKedepan, desc: dAmanKedepan, list: lAmanKedepan, labelHari, status: 'aman', isKedepan: true });
   }
 
   if (cards.length === 0) {
-    cards.push({ bg: bgAman, fg: fgAman, title: `Aman semua ${labelHari.toLowerCase()}!`, desc: 'Boleh bolos kok kalau mau.', list: null, labelHari, status: 'aman', isKedepan: false });
+    cards.push({ bg: bgAman, fg: fgAman, title: `${labelHari} aman semua kok`, desc: 'Boleh bolos kok kalau mau.', list: null, labelHari, status: 'aman', isKedepan: false });
   }
 
   return cards;
