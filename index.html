@@ -1213,7 +1213,8 @@ function evaluasiRadarHarian(){
     cards.push({ bg: bgHabis, fg: fgHabis, title: `Awas! Jatah bolos habis:`, desc: null, list: habis, labelHari, status: 'habis' });
   }
   if (kritis.length > 0) {
-    cards.push({ bg: bgKritis, fg: fgKritis, title: `Jatah terakhir ${labelHari.toLowerCase()}:`, desc: null, list: kritis, labelHari, status: 'kritis' });
+    const titleKritis = labelHari === 'Hari ini' ? 'Jatah terakhir hari ini:' : 'Jatah terakhir untuk kedepannya:';
+    cards.push({ bg: bgKritis, fg: fgKritis, title: titleKritis, desc: null, list: kritis, labelHari, status: 'kritis' });
   }
   if (waspada.length > 0) {
     cards.push({ bg: bgWaspada, fg: fgWaspada, title: `Waspada sisa jatah menipis:`, desc: null, list: waspada, labelHari, status: 'waspada' });
@@ -1819,8 +1820,13 @@ function renderDashboard(){
 
     // Badge kecil di atas judul — sekarang seragam untuk SEMUA status, hanya
     // ikon & labelnya yang beda sesuai tingkat urgensi (habis/kritis/waspada/aman).
+    let finalBadgeLabel = badgeCfg ? badgeCfg.label : '';
+    if (badgeCfg && c.labelHari !== 'Hari ini' && ['habis', 'kritis', 'waspada'].includes(c.status)) {
+      finalBadgeLabel = 'UNTUK KEDEPANNYA';
+    }
+
     const badgeHtml = badgeCfg
-      ? `<div style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:${c.fg}; color:${c.bg}; opacity:0.9; font-size:12px; font-weight:800; letter-spacing:0.3px; text-transform:uppercase; width:fit-content; margin-bottom:14px;">${svg(badgeCfg.icon)}<span>${badgeCfg.label}</span></div>`
+      ? `<div style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:${c.fg}; color:${c.bg}; opacity:0.9; font-size:12px; font-weight:800; letter-spacing:0.3px; text-transform:uppercase; width:fit-content; margin-bottom:14px;">${svg(badgeCfg.icon)}<span>${finalBadgeLabel}</span></div>`
       : '';
 
     // Menghilangkan &bull; karena sudah di-generate via CSS ::before
