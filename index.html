@@ -939,7 +939,7 @@ function defaultDB(){
       namaPJdefault:{}, 
       reminderAktif:false 
     },
-    appState:{ sudahOnboarding:false, sesiTerakhirDibuka:null, semesterSelesaiDiakui:false, absenCommittedTanggal:null, qcBisukanTanggal:null, qcSelesaiTanggal:null, qcLewatiHarianTanggal:null, qcAbaikanMatkul:{} }
+    appState:{ sudahOnboarding:false, sesiTerakhirDibuka:null, semesterSelesaiDiakui:false, absenCommittedTanggal:null, qcBisukanTanggal:null, qcSelesaiTanggal:null, qcLewatiHarianTanggal:null, qcLewatiHarianMatkulIds:null, qcAbaikanMatkul:{} }
   };
 }
 const DB = { data:null };
@@ -1210,13 +1210,13 @@ function evaluasiRadarHarian(){
 
   const cards = [];
   if (habis.length > 0) {
-    cards.push({ bg: bgHabis, fg: fgHabis, title: `Kelas yang dilarang bolos untuk kedepannya:`, desc: null, list: habis, labelHari, status: 'habis' });
+    cards.push({ bg: bgHabis, fg: fgHabis, title: `Awas! Jatah bolos habis:`, desc: null, list: habis, labelHari, status: 'habis' });
   }
   if (kritis.length > 0) {
     cards.push({ bg: bgKritis, fg: fgKritis, title: `Jatah terakhir ${labelHari.toLowerCase()}:`, desc: null, list: kritis, labelHari, status: 'kritis' });
   }
   if (waspada.length > 0) {
-    cards.push({ bg: bgWaspada, fg: fgWaspada, title: `Kelas yang perlu diwaspadai untuk kedepannya:`, desc: null, list: waspada, labelHari, status: 'waspada' });
+    cards.push({ bg: bgWaspada, fg: fgWaspada, title: `Waspada sisa jatah menipis:`, desc: null, list: waspada, labelHari, status: 'waspada' });
   }
   if (habis.length === 0 && kritis.length === 0 && waspada.length === 0) {
     cards.push({ bg: bgAman, fg: fgAman, title: `Boleh bolos kok ${labelHari.toLowerCase()}`, desc: 'Semua kelas jatah absennya aman.', list: null, labelHari, status: 'aman' });
@@ -3413,7 +3413,7 @@ function renderSettingsMatkul(){
       });
       const addBtn = el('div','matkul-add-item statelayer mt8');
       addBtn.innerHTML = '<div class="row gap8" style="justify-content:center;color:var(--clr-primary);font-weight:700;">'+svg('plus')+'<span>Tambah Mata Kuliah</span></div>';
-      addBtn.onclick = ()=> openTambahMatkulSheet(m=>{ DB.data.matkul.push({id:uid(), namaLengkap:m.namaLengkap, hari:m.hari, jamMulai:m.jamMulai, jamSelesai:m.jamSelesai, modeDefault:m.modeDefault, limitAbsenKhusus:null, arsip:false}); dbSaveDebounced(); refresh(); renderDashboard(); });
+      addBtn.onclick = ()=> openTambahMatkulSheet(m=>{ DB.data.matkul.push({id:uid(), namaLengkap:m.namaLengkap, hari:m.hari, jamMulai:m.jamMulai, jamSelesai:m.jamSelesai, modeDefault:m.modeDefault, limitAbsenKhusus:null, arsip:false}); dbSaveDebounced(); refresh(); renderDashboard(); triggerReevaluasiQuickCheck(); });
       list.appendChild(addBtn);
     }
     refresh();
@@ -3683,6 +3683,7 @@ function renderQuickCheck(){
   // Pastikan key state Quick Check baru selalu ada & aman di DB
   if(DB.data.appState.qcSelesaiTanggal===undefined) DB.data.appState.qcSelesaiTanggal = null;
   if(DB.data.appState.qcLewatiHarianTanggal===undefined) DB.data.appState.qcLewatiHarianTanggal = null;
+  if(DB.data.appState.qcLewatiHarianMatkulIds===undefined) DB.data.appState.qcLewatiHarianMatkulIds = null;
   if(!DB.data.appState.qcAbaikanMatkul) DB.data.appState.qcAbaikanMatkul = {};
 
   const todayIso = todayISO();
@@ -3694,6 +3695,7 @@ function renderQuickCheck(){
   jadwalHariIni.forEach(j=>{
     const start = hmToMin(j.jamMulai), end = hmToMin(j.jamSelesai);
     if(end > maxSelesai) maxSelesai = end;
+    // Pakai >= dan <= agar kelas yang baru mulai/baru selesai tetap terhitung "berlangsung"
     if(nowMin >= start && nowMin <= end) jadwalBerlangsung = j;
   });
 
@@ -3701,8 +3703,18 @@ function renderQuickCheck(){
   const matkul = jadwalBerlangsung ? matkulById(jadwalBerlangsung.matkulId) : null;
   const matkulIniSudahDiabaikan = matkul ? (DB.data.appState.qcAbaikanMatkul[matkul.id] === todayIso) : false;
 
+  // "Lewati harian" (tombol Bisukan) hanya berlaku untuk matkul yang SUDAH ADA
+  // saat tombol itu ditekan. Kalau matkul yang sedang berlangsung sekarang baru
+  // ditambahkan setelahnya (id-nya tidak ada di snapshot), anggap belum di-lewati
+  // supaya Quick Check tetap muncul untuk kelas baru tersebut.
+  const sudahDilewatiHarian = matkul
+    ? (DB.data.appState.qcLewatiHarianTanggal === todayIso
+        && Array.isArray(DB.data.appState.qcLewatiHarianMatkulIds)
+        && DB.data.appState.qcLewatiHarianMatkulIds.includes(matkul.id))
+    : (DB.data.appState.qcLewatiHarianTanggal === todayIso);
+
   // KONDISI A: ada kelas yang sedang berlangsung sekarang
-  if(matkul && DB.data.appState.qcLewatiHarianTanggal !== todayIso && !matkulIniSudahDiabaikan){
+  if(matkul && !sudahDilewatiHarian && !matkulIniSudahDiabaikan){
     tampilkanUIQuickCheck({
       judul: `${matkul.namaLengkap} hadir?`,
       subjudul: 'Kelas ini sedang berlangsung sekarang.',
@@ -3791,6 +3803,9 @@ function tampilkanUIQuickCheck({judul, subjudul, labelYa, labelTidak, onYa, onTi
     btnBisukan.onclick = ()=>{
       haptic();
       DB.data.appState.qcLewatiHarianTanggal = todayISO();
+      // Simpan snapshot id matkul yang sudah ada saat "Lewati" ditekan, supaya
+      // matkul baru yang ditambahkan setelahnya tidak ikut ter-lewati otomatis.
+      DB.data.appState.qcLewatiHarianMatkulIds = DB.data.matkul.map(m=>m.id);
       DB.data.appState.qcBisukanTanggal = todayISO();
       dbSaveDebounced();
       navPop();
@@ -3804,6 +3819,16 @@ function tampilkanUIQuickCheck({judul, subjudul, labelYa, labelTidak, onYa, onTi
 }
 function finishQuickCheck(){
   showScreen('scr-main'); syncActiveTabUI(); renderDashboard();
+}
+// Dipanggil setiap ada perubahan yang bisa mempengaruhi kondisi Quick Check
+// (misalnya matkul baru ditambahkan). Ini membuat Quick Check langsung
+// muncul/update tanpa perlu tutup-buka app lagi.
+function triggerReevaluasiQuickCheck(){
+  if(!shouldShowQuickCheck()) return;
+  // Re-evaluate & tampilkan Quick Check dengan data terbaru, baik saat Quick
+  // Check sedang aktif di layar (langsung ter-refresh) maupun saat belum
+  // tampil sama sekali (mis. langsung setelah simpan matkul baru).
+  renderQuickCheck();
 }
 
 /* =========================================================
