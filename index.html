@@ -1957,40 +1957,40 @@ function renderKelas(){
   const root = $('#tab-kelas');
   root.innerHTML='';
 
-  // Header Tab
+  // Set default hari ke hari ini jika belum ada
+  if(!APP.selectedHariKelas) APP.selectedHariKelas = HARI[todayHariIndex()];
+
   const headerWrap = el('div','stack');
-  headerWrap.style.marginBottom = '8px';
   headerWrap.innerHTML = '<div class="txt-headline">Daftar Kelas</div>'+
                          '<div class="txt-body muted mt8">Pantau batas absensi setiap mata kuliah</div>';
   root.appendChild(headerWrap);
 
-  const activeOvByMatkul = {};
-  DB.data.jadwalOverride.filter(o=>o.status==='aktif').forEach(o=>{ activeOvByMatkul[o.matkulId] = true; });
+  // Kapsul Filter Horizontal
+  const filterWrap = el('div', 'chip-row no-tab-swipe mt16');
+  filterWrap.style.cssText = 'overflow-x:auto; flex-wrap:nowrap; padding-bottom:12px; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin-left:-24px; margin-right:-24px; padding-left:24px; padding-right:24px;';
 
-  for(let hariIdx=0; hariIdx<HARI.length; hariIdx++){
-    const items = DB.data.matkul.filter(m=>!m.arsip && m.hari===HARI[hariIdx]);
-    if(!items.length) continue;
+  const listContainer = el('div', 'stack gap12 mt8');
 
-    // Sticky Hari Header
-    const hariHeader = el('div','sticky-header mt12');
-    hariHeader.style.padding = '12px 0 8px 0'; 
-    hariHeader.style.top = '-16px'; 
-    hariHeader.innerHTML = HARI[hariIdx];
-    root.appendChild(hariHeader);
-
-    // List Kelas untuk Hari Tersebut
-    const listCard = el('div','stack gap12');
+  const renderList = () => {
+    listContainer.innerHTML = '';
+    const items = DB.data.matkul.filter(m => !m.arsip && m.hari === APP.selectedHariKelas);
+    if(items.length === 0){
+      listContainer.innerHTML = '<div class="empty mt24"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" style="width:48px;height:48px;opacity:0.3;"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-3-9h6v2H9z"/></svg><div class="txt-body muted mt8">Tidak ada jadwal kelas di hari '+APP.selectedHariKelas+'</div></div>';
+      return;
+    }
+    const activeOvByMatkul = {};
+    DB.data.jadwalOverride.filter(o=>o.status==='aktif').forEach(o=>{ activeOvByMatkul[o.matkulId] = true; });
     items.forEach(m=>{
       const used = absenTerpakaiUntukMatkul(m.id), lim = limitUntukMatkul(m)||1;
       const pct = clamp(used/lim,0,1);
       const color = pct>=1?'var(--clr-error)':(pct>=0.66?'#C08A2E':'var(--clr-primary)');
-      
+
       const card = el('div','card row between statelayer');
       card.style.cursor = 'pointer';
       card.onclick = () => { haptic(); openDetailProgressMatkul(m.id); };
-      
+
       const pindahanChip = activeOvByMatkul[m.id] ? '<span class="chip" style="height:24px; padding:0 8px; font-size:10.5px; border:none; background:var(--clr-primary-container); color:var(--clr-on-primary-container);">Pindahan</span>' : '';
-      
+
       card.innerHTML = `
         <div class="stack" style="gap:4px;flex:1;">
           <div class="row gap8">
@@ -2006,12 +2006,27 @@ function renderKelas(){
           <div class="txt-title-sm" style="color:${color};font-size:18px;font-family:var(--font-display); line-height:1;">${used}/${lim}</div>
         </div>
       `;
-      listCard.appendChild(card);
+      listContainer.appendChild(card);
     });
-    root.appendChild(listCard);
-  }
-  
-  // Extra padding bawah agar tidak tertabrak FAB
+  };
+
+  HARI.forEach(h => {
+    const btn = el('button', 'chip statelayer ' + (h === APP.selectedHariKelas ? 'selected' : ''));
+    btn.style.cssText = 'flex-shrink:0; font-weight:700; border-width:2px; height:44px; border-radius:var(--shape-full);';
+    btn.textContent = h;
+    btn.onclick = () => {
+      haptic(20);
+      APP.selectedHariKelas = h;
+      Array.from(filterWrap.children).forEach(b => { b.classList.toggle('selected', b.textContent === h); });
+      renderList();
+    };
+    filterWrap.appendChild(btn);
+  });
+
+  root.appendChild(filterWrap);
+  root.appendChild(listContainer);
+  renderList();
+
   const spacer = el('div');
   spacer.style.height = '40px';
   root.appendChild(spacer);
@@ -2052,6 +2067,26 @@ function openDetailProgressMatkul(matkulId) {
       </div>
     `;
     body.appendChild(statusCard);
+
+    const actionRow = el('div', 'row between mt24');
+    actionRow.innerHTML = '<span class="txt-body muted" style="font-weight:700; font-size:11.5px; letter-spacing:0.5px; text-transform:uppercase;">INPUT DATA LAMA</span>';
+    const btns = el('div', 'row gap8');
+    const btnMinus = el('button', 'btn-icon statelayer');
+    btnMinus.style.background = 'var(--clr-surface-container-high)';
+    btnMinus.style.width = '44px';
+    btnMinus.style.height = '44px';
+    btnMinus.innerHTML = svg('minus');
+    const btnPlus = el('button', 'btn-icon statelayer');
+    btnPlus.style.background = 'var(--clr-surface-container-high)';
+    btnPlus.style.width = '44px';
+    btnPlus.style.height = '44px';
+    btnPlus.innerHTML = svg('plus');
+    btnMinus.onclick = () => kurangiAbsenManual(m, () => { closeSheet(); setTimeout(() => openDetailProgressMatkul(matkulId), 260); });
+    btnPlus.onclick = () => tambahAbsenManual(m, () => { closeSheet(); setTimeout(() => openDetailProgressMatkul(matkulId), 260); });
+    btns.appendChild(btnMinus);
+    btns.appendChild(btnPlus);
+    actionRow.appendChild(btns);
+    body.appendChild(actionRow);
 
     const titleH = el('div', 'txt-title-sm mt24', 'Catatan Absensi');
     body.appendChild(titleH);
@@ -4164,7 +4199,7 @@ function initTabSwipe(){
   container.addEventListener('touchend', onEnd);
 }
 
-const APP = { activeTab:'dashboard', scrollPos:{dashboard:0, kelas:0, riwayat:0} };
+const APP = { activeTab:'dashboard', scrollPos:{dashboard:0, kelas:0, riwayat:0}, selectedHariKelas: null };
 function bootMain(){
   showScreen('scr-main');
   renderFab();
