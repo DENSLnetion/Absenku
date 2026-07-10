@@ -1223,26 +1223,46 @@ function evaluasiRadarHarian(){
 
   const cards = [];
   
-  const semuaHabis = (habis.length + habisKedepan.length) === jadwal.length && jadwal.length > 0;
-  const semuaKritis = (kritis.length + kritisKedepan.length) === jadwal.length && jadwal.length > 0;
-  const semuaWaspada = (waspada.length + waspadaKedepan.length) === jadwal.length && jadwal.length > 0;
+  const semuaHabis = (habis.length === jadwal.length) && jadwal.length > 0;
+  const semuaHabisKedepan = (habisKedepan.length === jadwal.length) && jadwal.length > 0;
   
-  let titleHabis = semuaHabis ? 'JANGAN SAMPE BOLOS KELAS!' : (labelHari === 'Besok' ? 'Besok jangan bolos:' : `Jangan bolos ${habis.length} kelas hari ini!`);
-  let titleHabisKedepan = semuaHabis ? 'JANGAN SAMPE BOLOS KELAS!' : 'Awas jatah bolos habis kedepannya:';
+  const semuaKritis = (kritis.length === jadwal.length) && jadwal.length > 0;
+  const semuaKritisKedepan = (kritisKedepan.length === jadwal.length) && jadwal.length > 0;
+  
+  const semuaWaspada = (waspada.length === jadwal.length) && jadwal.length > 0;
+  const semuaWaspadaKedepan = (waspadaKedepan.length === jadwal.length) && jadwal.length > 0;
+  
+  let titleHabis = semuaHabis ? `${labelHari.toUpperCase()} JANGAN BOLOS!` : (labelHari === 'Besok' ? 'Besok jangan bolos:' : `Jangan bolos ${habis.length} kelas hari ini!`);
+  let descHabis = semuaHabis ? 'Jatah absen untuk semua kelas ini sudah habis.' : null;
+  let listHabis = semuaHabis ? null : habis;
+
+  let titleHabisKedepan = semuaHabisKedepan ? 'KEDEPANNYA JANGAN BOLOS!' : 'Awas jatah bolos habis kedepannya:';
+  let descHabisKedepan = semuaHabisKedepan ? 'Jatah absen untuk semua kelas ini sudah habis.' : null;
+  let listHabisKedepan = semuaHabisKedepan ? null : habisKedepan;
 
   let titleKritis = semuaKritis ? `Jatah terakhir semua ${labelHari.toLowerCase()}!` : `Jatah terakhir ${labelHari.toLowerCase()}:`;
-  let titleKritisKedepan = semuaKritis ? 'Jatah terakhir semua kedepannya!' : 'Jatah terakhir untuk kedepannya:';
+  let descKritis = semuaKritis ? 'Semua kelas tersisa 1 kali absen lagi.' : null;
+  let listKritis = semuaKritis ? null : kritis;
 
-  let titleWaspada = semuaWaspada ? `Sisa jatah tipis semua ${labelHari.toLowerCase()}:` : (labelHari === 'Besok' ? 'Waspadai sisa jatah besok:' : 'Waspadai sisa jatah hari ini:');
-  let titleWaspadaKedepan = semuaWaspada ? 'Sisa jatah tipis semua kedepannya:' : 'Waspadai sisa jatah kedepannya:';
+  let titleKritisKedepan = semuaKritisKedepan ? 'Jatah terakhir semua kedepannya!' : 'Jatah terakhir untuk kedepannya:';
+  let descKritisKedepan = semuaKritisKedepan ? 'Semua kelas tersisa 1 kali absen lagi.' : null;
+  let listKritisKedepan = semuaKritisKedepan ? null : kritisKedepan;
 
-  if (habis.length > 0) cards.push({ bg: bgHabis, fg: fgHabis, title: titleHabis, desc: null, list: habis, labelHari, status: 'habis', isKedepan: false });
-  if (kritis.length > 0) cards.push({ bg: bgKritis, fg: fgKritis, title: titleKritis, desc: null, list: kritis, labelHari, status: 'kritis', isKedepan: false });
-  if (waspada.length > 0) cards.push({ bg: bgWaspada, fg: fgWaspada, title: titleWaspada, desc: null, list: waspada, labelHari, status: 'waspada', isKedepan: false });
+  let titleWaspada = semuaWaspada ? `Sisa jatah tipis semua ${labelHari.toLowerCase()}!` : (labelHari === 'Besok' ? 'Waspadai sisa jatah besok:' : 'Waspadai sisa jatah hari ini:');
+  let descWaspada = semuaWaspada ? 'Jatah absen semua kelas mulai menipis.' : null;
+  let listWaspada = semuaWaspada ? null : waspada;
 
-  if (habisKedepan.length > 0) cards.push({ bg: bgHabis, fg: fgHabis, title: titleHabisKedepan, desc: null, list: habisKedepan, labelHari, status: 'habis', isKedepan: true });
-  if (kritisKedepan.length > 0) cards.push({ bg: bgKritis, fg: fgKritis, title: titleKritisKedepan, desc: null, list: kritisKedepan, labelHari, status: 'kritis', isKedepan: true });
-  if (waspadaKedepan.length > 0) cards.push({ bg: bgWaspada, fg: fgWaspada, title: titleWaspadaKedepan, desc: null, list: waspadaKedepan, labelHari, status: 'waspada', isKedepan: true });
+  let titleWaspadaKedepan = semuaWaspadaKedepan ? 'Sisa jatah tipis semua kedepannya!' : 'Waspadai sisa jatah kedepannya:';
+  let descWaspadaKedepan = semuaWaspadaKedepan ? 'Jatah absen semua kelas mulai menipis.' : null;
+  let listWaspadaKedepan = semuaWaspadaKedepan ? null : waspadaKedepan;
+
+  if (habis.length > 0) cards.push({ bg: bgHabis, fg: fgHabis, title: titleHabis, desc: descHabis, list: listHabis, labelHari, status: 'habis', isKedepan: false });
+  if (kritis.length > 0) cards.push({ bg: bgKritis, fg: fgKritis, title: titleKritis, desc: descKritis, list: listKritis, labelHari, status: 'kritis', isKedepan: false });
+  if (waspada.length > 0) cards.push({ bg: bgWaspada, fg: fgWaspada, title: titleWaspada, desc: descWaspada, list: listWaspada, labelHari, status: 'waspada', isKedepan: false });
+
+  if (habisKedepan.length > 0) cards.push({ bg: bgHabis, fg: fgHabis, title: titleHabisKedepan, desc: descHabisKedepan, list: listHabisKedepan, labelHari, status: 'habis', isKedepan: true });
+  if (kritisKedepan.length > 0) cards.push({ bg: bgKritis, fg: fgKritis, title: titleKritisKedepan, desc: descKritisKedepan, list: listKritisKedepan, labelHari, status: 'kritis', isKedepan: true });
+  if (waspadaKedepan.length > 0) cards.push({ bg: bgWaspada, fg: fgWaspada, title: titleWaspadaKedepan, desc: descWaspadaKedepan, list: listWaspadaKedepan, labelHari, status: 'waspada', isKedepan: true });
 
   const adaKedepan = habisKedepan.length > 0 || kritisKedepan.length > 0 || waspadaKedepan.length > 0 || amanKedepan.length > 0;
   
