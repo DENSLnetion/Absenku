@@ -1172,57 +1172,77 @@ function totalPertemuanEstimasi(m){ return 14; }
 /* ---- INTUITIVE TRACKER: EVALUASI RADAR HARIAN ---- */
 function evaluasiRadarHarian(){
   let isBesok = false;
-  let jadwal = jadwalEfektifTanggal(todayISO());
-  // Cek apakah semua jam kelas hari ini sudah terlewati
+  let targetTanggal = todayISO();
+  let jadwal = jadwalEfektifTanggal(targetTanggal);
+  
   if (jadwal.length > 0) {
     let maxSelesai = 0;
     jadwal.forEach(j => { let endMin = hmToMin(j.jamSelesai); if (endMin > maxSelesai) maxSelesai = endMin; });
     if (nowMinutes() > maxSelesai) {
       isBesok = true;
-      jadwal = jadwalEfektifTanggal(addDays(todayISO(), 1));
+      targetTanggal = addDays(todayISO(), 1);
+      jadwal = jadwalEfektifTanggal(targetTanggal);
     }
   } else {
     isBesok = true;
-    jadwal = jadwalEfektifTanggal(addDays(todayISO(), 1));
+    targetTanggal = addDays(todayISO(), 1);
+    jadwal = jadwalEfektifTanggal(targetTanggal);
   }
+  
   let labelHari = isBesok ? 'Besok' : 'Hari ini';
   if (jadwal.length === 0) {
-    return [{ status: 'libur', bg: 'var(--clr-surface-container)', fg: 'var(--clr-on-surface)', title: 'Kosong', desc: 'Tidak ada jadwal kelas ' + labelHari.toLowerCase() + '.', list: null, labelHari }];
+    return [{ status: 'libur', bg: 'var(--clr-surface-container)', fg: 'var(--clr-on-surface)', title: 'Kosong', desc: 'Tidak ada jadwal kelas ' + labelHari.toLowerCase() + '.', list: null, labelHari, isKedepan: false }];
   }
+  
   let habis = [], kritis = [], waspada = [], aman = [];
+  let habisKedepan = [], kritisKedepan = [], waspadaKedepan = [], amanKedepan = [];
+  
   jadwal.forEach(j => {
     const m = matkulById(j.matkulId);
     if(!m) return;
     const sisa = limitUntukMatkul(m) - absenTerpakaiUntukMatkul(m.id);
-    if (sisa <= 0) habis.push(m.namaLengkap);
-    else if (sisa === 1) kritis.push(m.namaLengkap);
-    else if (sisa === 2) waspada.push(m.namaLengkap);
-    else aman.push(m.namaLengkap);
+    const sudahAbsen = sudahAbsenPadaTanggal(m.id, targetTanggal);
+    
+    if (sudahAbsen) {
+      if (sisa <= 0) habisKedepan.push(m.namaLengkap);
+      else if (sisa === 1) kritisKedepan.push(m.namaLengkap);
+      else if (sisa === 2) waspadaKedepan.push(m.namaLengkap);
+      else amanKedepan.push(m.namaLengkap);
+    } else {
+      if (sisa <= 0) habis.push(m.namaLengkap);
+      else if (sisa === 1) kritis.push(m.namaLengkap);
+      else if (sisa === 2) waspada.push(m.namaLengkap);
+      else aman.push(m.namaLengkap);
+    }
   });
 
   const bgHabis = 'var(--clr-error-container)', fgHabis = 'var(--clr-on-error-container)';
   const bgKritis = '#FCE3B4', fgKritis = '#523A00';
   const bgWaspada = 'var(--clr-secondary-container)', fgWaspada = 'var(--clr-on-secondary-container)';
-  // FIX: status aman sebelumnya pakai --clr-primary-container, sama persis dengan
-  // warna FAB utama ("+") sehingga menumpuk/nyaru saat FAB melayang di atas card.
-  // Diganti ke --clr-tertiary-container agar kontras & tetap konsisten M3.
   const bgAman = 'var(--clr-tertiary-container)', fgAman = 'var(--clr-on-tertiary-container)';
 
   const cards = [];
-  if (habis.length > 0) {
-    cards.push({ bg: bgHabis, fg: fgHabis, title: `Awas! Jatah bolos habis:`, desc: null, list: habis, labelHari, status: 'habis' });
-  }
-  if (kritis.length > 0) {
-    const titleKritis = labelHari === 'Hari ini' ? 'Jatah terakhir hari ini:' : 'Jatah terakhir untuk kedepannya:';
-    cards.push({ bg: bgKritis, fg: fgKritis, title: titleKritis, desc: null, list: kritis, labelHari, status: 'kritis' });
-  }
-  if (waspada.length > 0) {
-    cards.push({ bg: bgWaspada, fg: fgWaspada, title: `Waspada sisa jatah menipis:`, desc: null, list: waspada, labelHari, status: 'waspada' });
-  }
+  
+  if (habis.length > 0) cards.push({ bg: bgHabis, fg: fgHabis, title: `Awas! Jatah bolos habis:`, desc: null, list: habis, labelHari, status: 'habis', isKedepan: false });
+  if (kritis.length > 0) cards.push({ bg: bgKritis, fg: fgKritis, title: `Jatah terakhir ${labelHari.toLowerCase()}:`, desc: null, list: kritis, labelHari, status: 'kritis', isKedepan: false });
+  if (waspada.length > 0) cards.push({ bg: bgWaspada, fg: fgWaspada, title: `Waspada sisa jatah menipis:`, desc: null, list: waspada, labelHari, status: 'waspada', isKedepan: false });
+
+  if (habisKedepan.length > 0) cards.push({ bg: bgHabis, fg: fgHabis, title: `Awas! Jatah bolos habis kedepannya:`, desc: null, list: habisKedepan, labelHari, status: 'habis', isKedepan: true });
+  if (kritisKedepan.length > 0) cards.push({ bg: bgKritis, fg: fgKritis, title: `Jatah terakhir untuk kedepannya:`, desc: null, list: kritisKedepan, labelHari, status: 'kritis', isKedepan: true });
+  if (waspadaKedepan.length > 0) cards.push({ bg: bgWaspada, fg: fgWaspada, title: `Waspada sisa jatah menipis kedepannya:`, desc: null, list: waspadaKedepan, labelHari, status: 'waspada', isKedepan: true });
+
   if (habis.length === 0 && kritis.length === 0 && waspada.length === 0) {
-    cards.push({ bg: bgAman, fg: fgAman, title: `Boleh bolos kok ${labelHari.toLowerCase()}`, desc: 'Semua kelas jatah absennya aman.', list: null, labelHari, status: 'aman' });
+    if (aman.length > 0) cards.push({ bg: bgAman, fg: fgAman, title: `Boleh bolos kok ${labelHari.toLowerCase()}`, desc: 'Semua kelas jatah absennya aman.', list: null, labelHari, status: 'aman', isKedepan: false });
   } else if (aman.length > 0) {
-    cards.push({ bg: bgAman, fg: fgAman, title: `Kelas yang aman ${labelHari.toLowerCase()}:`, desc: null, list: aman, labelHari, status: 'aman' });
+    cards.push({ bg: bgAman, fg: fgAman, title: `Kelas yang aman ${labelHari.toLowerCase()}:`, desc: null, list: aman, labelHari, status: 'aman', isKedepan: false });
+  }
+
+  if (amanKedepan.length > 0) {
+    cards.push({ bg: bgAman, fg: fgAman, title: `Kelas yang aman kedepannya:`, desc: null, list: amanKedepan, labelHari, status: 'aman', isKedepan: true });
+  }
+
+  if (cards.length === 0) {
+    cards.push({ bg: bgAman, fg: fgAman, title: `Boleh bolos kok ${labelHari.toLowerCase()}`, desc: 'Semua kelas jatah absennya aman.', list: null, labelHari, status: 'aman', isKedepan: false });
   }
 
   return cards;
@@ -1821,7 +1841,7 @@ function renderDashboard(){
     // Badge kecil di atas judul — sekarang seragam untuk SEMUA status, hanya
     // ikon & labelnya yang beda sesuai tingkat urgensi (habis/kritis/waspada/aman).
     let finalBadgeLabel = badgeCfg ? badgeCfg.label : '';
-    if (badgeCfg && c.labelHari !== 'Hari ini' && ['habis', 'kritis', 'waspada'].includes(c.status)) {
+    if (badgeCfg && c.isKedepan) {
       finalBadgeLabel = 'UNTUK KEDEPANNYA';
     }
 
