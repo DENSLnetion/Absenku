@@ -1203,22 +1203,25 @@ function evaluasiRadarHarian(){
   const bgHabis = 'var(--clr-error-container)', fgHabis = 'var(--clr-on-error-container)';
   const bgKritis = '#FCE3B4', fgKritis = '#523A00';
   const bgWaspada = 'var(--clr-secondary-container)', fgWaspada = 'var(--clr-on-secondary-container)';
-  const bgAman = 'var(--clr-primary-container)', fgAman = 'var(--clr-on-primary-container)';
+  // FIX: status aman sebelumnya pakai --clr-primary-container, sama persis dengan
+  // warna FAB utama ("+") sehingga menumpuk/nyaru saat FAB melayang di atas card.
+  // Diganti ke --clr-tertiary-container agar kontras & tetap konsisten M3.
+  const bgAman = 'var(--clr-tertiary-container)', fgAman = 'var(--clr-on-tertiary-container)';
 
   const cards = [];
   if (habis.length > 0) {
-    cards.push({ bg: bgHabis, fg: fgHabis, title: `JANGAN BOLOS ${labelHari.toUpperCase()}!`, desc: null, list: habis, labelHari });
+    cards.push({ bg: bgHabis, fg: fgHabis, title: `JANGAN BOLOS ${labelHari.toUpperCase()}!`, desc: null, list: habis, labelHari, status: 'habis' });
   }
   if (kritis.length > 0) {
-    cards.push({ bg: bgKritis, fg: fgKritis, title: `Jatah terakhir ${labelHari.toLowerCase()}:`, desc: null, list: kritis, labelHari });
+    cards.push({ bg: bgKritis, fg: fgKritis, title: `Jatah terakhir ${labelHari.toLowerCase()}:`, desc: null, list: kritis, labelHari, status: 'kritis' });
   }
   if (waspada.length > 0) {
-    cards.push({ bg: bgWaspada, fg: fgWaspada, title: `Waspadai ${waspada.length} kelas ${labelHari.toLowerCase()}:`, desc: null, list: waspada, labelHari });
+    cards.push({ bg: bgWaspada, fg: fgWaspada, title: `Waspadai ${waspada.length} kelas ${labelHari.toLowerCase()}:`, desc: null, list: waspada, labelHari, status: 'waspada' });
   }
   if (habis.length === 0 && kritis.length === 0 && waspada.length === 0) {
-    cards.push({ bg: bgAman, fg: fgAman, title: `Boleh bolos kok ${labelHari.toLowerCase()}`, desc: 'Semua kelas jatah absennya aman.', list: null, labelHari });
+    cards.push({ bg: bgAman, fg: fgAman, title: `Boleh bolos kok ${labelHari.toLowerCase()}`, desc: 'Semua kelas jatah absennya aman.', list: null, labelHari, status: 'aman' });
   } else if (aman.length > 0) {
-    cards.push({ bg: bgAman, fg: fgAman, title: `Kelas yang aman ${labelHari.toLowerCase()}:`, desc: null, list: aman, labelHari });
+    cards.push({ bg: bgAman, fg: fgAman, title: `Kelas yang aman ${labelHari.toLowerCase()}:`, desc: null, list: aman, labelHari, status: 'aman' });
   }
 
   return cards;
@@ -1762,6 +1765,7 @@ function renderDashboard(){
   const containerEl = el('div','radar-card-container statelayer');
   containerEl.style.cssText = 'position:relative; overflow:hidden; border-radius:32px; padding:28px; height:260px; display:flex; flex-direction:column; justify-content:flex-start; text-align:left; box-shadow: 0 16px 32px rgba(0,0,0,0.08); cursor:'+(radarCards.length>1?'pointer':'default')+';';
   const contentEl = el('div','radar-content-anim');
+  contentEl.style.position = 'relative';
   containerEl.appendChild(contentEl);
   statCard.appendChild(containerEl);
 
@@ -1774,6 +1778,7 @@ function renderDashboard(){
     containerEl.style.backgroundColor = c.bg;
     containerEl.style.color = c.fg;
 
+    const isAman = c.status === 'aman' || c.status === 'libur';
     const count = c.list ? c.list.length : 0;
 
     // Skala ukuran font & jarak ekstra besar saat item sedikit
@@ -1795,19 +1800,41 @@ function renderDashboard(){
       descFontSize = 'clamp(16px, 4.5vw, 17px)';
     }
 
+    // Dekorasi lingkaran blur khas M3 Expressive, khusus status aman/libur
+    // biar card tidak terasa "kosong" saat tidak ada list item.
+    const decoHtml = isAman
+      ? `<div aria-hidden="true" style="position:absolute; top:-46px; right:-30px; width:160px; height:160px; border-radius:50%; background:${c.fg}; opacity:0.10; pointer-events:none;"></div>
+         <div aria-hidden="true" style="position:absolute; bottom:-56px; left:-40px; width:130px; height:130px; border-radius:50%; background:${c.fg}; opacity:0.07; pointer-events:none;"></div>`
+      : '';
+
+    // Badge kecil di atas judul khusus status aman, sebagai penanda visual
+    // "santai" yang membedakan dari status warning/urgent lainnya.
+    const badgeHtml = isAman
+      ? `<div style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:${c.fg}; color:${c.bg}; opacity:0.9; font-size:12px; font-weight:800; letter-spacing:0.3px; text-transform:uppercase; width:fit-content; margin-bottom:14px;">${svg('check')}<span>Aman Terkendali</span></div>`
+      : '';
+
     // Menghilangkan &bull; karena sudah di-generate via CSS ::before
     const listHtml = c.list ? `<ul class="radar-card-list" style="margin-top:20px; padding:0; font-size:${listFontSize}; font-weight:700; opacity:0.95; display:flex; flex-direction:column; gap:${listGap};">` + c.list.map(n=>`<li style="list-style:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n}</li>`).join('') + '</ul>' : '';
     const descHtml = c.desc ? `<div style="font-size:${descFontSize}; font-weight:500; opacity:0.85; margin-top:14px; line-height:1.5;">${c.desc}</div>` : '';
+
+    // Padding & alignment konten menyesuaikan supaya proporsional baik saat
+    // list kosong (libur/aman tanpa item) maupun saat berisi banyak matkul.
+    containerEl.style.padding = isAman ? '32px 28px' : '28px';
+    containerEl.style.justifyContent = (isAman && count === 0) ? 'center' : 'flex-start';
 
     contentEl.classList.remove('radar-content-anim');
     void contentEl.offsetWidth; 
 
     contentEl.innerHTML = `
-      <div style="font-family:var(--font-display); font-size:${titleFontSize}; font-weight:800; line-height:1.15; letter-spacing:-0.5px; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;">
-        ${c.title}
+      ${decoHtml}
+      <div style="position:relative;">
+        ${badgeHtml}
+        <div style="font-family:var(--font-display); font-size:${titleFontSize}; font-weight:800; line-height:1.15; letter-spacing:-0.5px; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;">
+          ${c.title}
+        </div>
+        ${descHtml}
+        ${listHtml}
       </div>
-      ${descHtml}
-      ${listHtml}
     `;
     contentEl.classList.add('radar-content-anim');
   }
@@ -2299,6 +2326,10 @@ function renderFlowManualSelection() {
   renderFlowHeader('Pilih Manual', 25);
   const body = getFlowBody();
   const rawToday = jadwalEfektifTanggal(todayISO()).filter(j => !sudahAbsenPadaTanggal(j.matkulId, todayISO()));
+
+  // FIX: `wrap` sebelumnya tidak pernah dideklarasikan (ReferenceError),
+  // sehingga konten "Pilih Manual" gagal ter-render sama sekali.
+  const wrap = el('div', 'flow-body-content');
   wrap.style.paddingTop = '16px';
 
   wrap.innerHTML = `
