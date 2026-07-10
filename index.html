@@ -1773,15 +1773,26 @@ function renderDashboard(){
     containerEl.onclick = () => { advanceRadar(); resetRadarTimer(); };
   }
 
+  // Konfigurasi badge per status: label & ikon yang beda-beda tapi treatment
+  // visualnya (posisi, ukuran, style) seragam untuk SEMUA status.
+  const STATUS_BADGE = {
+    habis:   { icon: 'warn',  label: 'Bahaya Absen' },
+    kritis:  { icon: 'flame', label: 'Jatah Kritis' },
+    waspada: { icon: 'bell',  label: 'Perlu Diwaspadai' },
+    aman:    { icon: 'check', label: 'Aman Terkendali' },
+    libur:   { icon: 'check', label: 'Aman Terkendali' },
+  };
+
   function renderRadarCard(){
     const c = radarCards[radarIndex];
     containerEl.style.backgroundColor = c.bg;
     containerEl.style.color = c.fg;
 
-    const isAman = c.status === 'aman' || c.status === 'libur';
     const count = c.list ? c.list.length : 0;
+    const badgeCfg = STATUS_BADGE[c.status] || null;
 
-    // Skala ukuran font & jarak ekstra besar saat item sedikit
+    // Skala ukuran font & jarak ekstra besar saat item sedikit — berlaku sama
+    // untuk semua status (habis/kritis/waspada/aman) biar layout konsisten.
     let titleFontSize = 'clamp(26px, 7vw, 32px)';
     let listFontSize = 'clamp(14px, 4vw, 15px)';
     let listGap = '8px';
@@ -1800,27 +1811,27 @@ function renderDashboard(){
       descFontSize = 'clamp(16px, 4.5vw, 17px)';
     }
 
-    // Dekorasi lingkaran blur khas M3 Expressive, khusus status aman/libur
-    // biar card tidak terasa "kosong" saat tidak ada list item.
-    const decoHtml = isAman
-      ? `<div aria-hidden="true" style="position:absolute; top:-46px; right:-30px; width:160px; height:160px; border-radius:50%; background:${c.fg}; opacity:0.10; pointer-events:none;"></div>
-         <div aria-hidden="true" style="position:absolute; bottom:-56px; left:-40px; width:130px; height:130px; border-radius:50%; background:${c.fg}; opacity:0.07; pointer-events:none;"></div>`
-      : '';
+    // Dekorasi lingkaran blur khas M3 Expressive — sekarang tampil di SEMUA
+    // status, bukan cuma aman/libur, biar card tidak terasa "kosong"/polos
+    // dan seluruh status punya bahasa visual yang sama.
+    const decoHtml = `<div aria-hidden="true" style="position:absolute; top:-46px; right:-30px; width:160px; height:160px; border-radius:50%; background:${c.fg}; opacity:0.10; pointer-events:none;"></div>
+      <div aria-hidden="true" style="position:absolute; bottom:-56px; left:-40px; width:130px; height:130px; border-radius:50%; background:${c.fg}; opacity:0.07; pointer-events:none;"></div>`;
 
-    // Badge kecil di atas judul khusus status aman, sebagai penanda visual
-    // "santai" yang membedakan dari status warning/urgent lainnya.
-    const badgeHtml = isAman
-      ? `<div style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:${c.fg}; color:${c.bg}; opacity:0.9; font-size:12px; font-weight:800; letter-spacing:0.3px; text-transform:uppercase; width:fit-content; margin-bottom:14px;">${svg('check')}<span>Aman Terkendali</span></div>`
+    // Badge kecil di atas judul — sekarang seragam untuk SEMUA status, hanya
+    // ikon & labelnya yang beda sesuai tingkat urgensi (habis/kritis/waspada/aman).
+    const badgeHtml = badgeCfg
+      ? `<div style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:${c.fg}; color:${c.bg}; opacity:0.9; font-size:12px; font-weight:800; letter-spacing:0.3px; text-transform:uppercase; width:fit-content; margin-bottom:14px;">${svg(badgeCfg.icon)}<span>${badgeCfg.label}</span></div>`
       : '';
 
     // Menghilangkan &bull; karena sudah di-generate via CSS ::before
     const listHtml = c.list ? `<ul class="radar-card-list" style="margin-top:20px; padding:0; font-size:${listFontSize}; font-weight:700; opacity:0.95; display:flex; flex-direction:column; gap:${listGap};">` + c.list.map(n=>`<li style="list-style:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n}</li>`).join('') + '</ul>' : '';
     const descHtml = c.desc ? `<div style="font-size:${descFontSize}; font-weight:500; opacity:0.85; margin-top:14px; line-height:1.5;">${c.desc}</div>` : '';
 
-    // Padding & alignment konten menyesuaikan supaya proporsional baik saat
-    // list kosong (libur/aman tanpa item) maupun saat berisi banyak matkul.
-    containerEl.style.padding = isAman ? '32px 28px' : '28px';
-    containerEl.style.justifyContent = (isAman && count === 0) ? 'center' : 'flex-start';
+    // Padding & alignment konten seragam untuk semua status; hanya menyesuaikan
+    // secara proporsional saat list kosong (mis. "Kosong"/libur tanpa item)
+    // supaya konten tetap terpusat rapi, bukan menempel di atas.
+    containerEl.style.padding = '32px 28px';
+    containerEl.style.justifyContent = count === 0 ? 'center' : 'flex-start';
 
     contentEl.classList.remove('radar-content-anim');
     void contentEl.offsetWidth; 
