@@ -1224,40 +1224,44 @@ function evaluasiRadarHarian(){
   const cards = [];
   
   const semuaHabis = (habis.length + habisKedepan.length) === jadwal.length && jadwal.length > 0;
+  const semuaKritis = (kritis.length + kritisKedepan.length) === jadwal.length && jadwal.length > 0;
+  const semuaWaspada = (waspada.length + waspadaKedepan.length) === jadwal.length && jadwal.length > 0;
   
-  let titleHabis = semuaHabis 
-    ? 'JANGAN SAMPE BOLOS KELAS!' 
-    : (labelHari === 'Besok' ? 'Besok jangan bolos:' : `Jangan bolos ${habis.length} kelas hari ini!`);
-    
-  let titleHabisKedepan = semuaHabis 
-    ? 'JANGAN SAMPE BOLOS KELAS!' 
-    : 'Awas jatah bolos habis kedepannya:';
+  let titleHabis = semuaHabis ? 'JANGAN SAMPE BOLOS KELAS!' : (labelHari === 'Besok' ? 'Besok jangan bolos:' : `Jangan bolos ${habis.length} kelas hari ini!`);
+  let titleHabisKedepan = semuaHabis ? 'JANGAN SAMPE BOLOS KELAS!' : 'Awas jatah bolos habis kedepannya:';
 
-  let titleWaspada = labelHari === 'Besok' 
-    ? 'Waspadai sisa jatah besok:' 
-    : 'Waspadai sisa jatah hari ini:';
+  let titleKritis = semuaKritis ? `Jatah terakhir semua ${labelHari.toLowerCase()}!` : `Jatah terakhir ${labelHari.toLowerCase()}:`;
+  let titleKritisKedepan = semuaKritis ? 'Jatah terakhir semua kedepannya!' : 'Jatah terakhir untuk kedepannya:';
+
+  let titleWaspada = semuaWaspada ? `Sisa jatah tipis semua ${labelHari.toLowerCase()}:` : (labelHari === 'Besok' ? 'Waspadai sisa jatah besok:' : 'Waspadai sisa jatah hari ini:');
+  let titleWaspadaKedepan = semuaWaspada ? 'Sisa jatah tipis semua kedepannya:' : 'Waspadai sisa jatah kedepannya:';
 
   if (habis.length > 0) cards.push({ bg: bgHabis, fg: fgHabis, title: titleHabis, desc: null, list: habis, labelHari, status: 'habis', isKedepan: false });
-  if (kritis.length > 0) cards.push({ bg: bgKritis, fg: fgKritis, title: `Jatah terakhir ${labelHari.toLowerCase()}:`, desc: null, list: kritis, labelHari, status: 'kritis', isKedepan: false });
+  if (kritis.length > 0) cards.push({ bg: bgKritis, fg: fgKritis, title: titleKritis, desc: null, list: kritis, labelHari, status: 'kritis', isKedepan: false });
   if (waspada.length > 0) cards.push({ bg: bgWaspada, fg: fgWaspada, title: titleWaspada, desc: null, list: waspada, labelHari, status: 'waspada', isKedepan: false });
 
   if (habisKedepan.length > 0) cards.push({ bg: bgHabis, fg: fgHabis, title: titleHabisKedepan, desc: null, list: habisKedepan, labelHari, status: 'habis', isKedepan: true });
-  if (kritisKedepan.length > 0) cards.push({ bg: bgKritis, fg: fgKritis, title: `Jatah terakhir untuk kedepannya:`, desc: null, list: kritisKedepan, labelHari, status: 'kritis', isKedepan: true });
-  if (waspadaKedepan.length > 0) cards.push({ bg: bgWaspada, fg: fgWaspada, title: `Waspadai sisa jatah kedepannya:`, desc: null, list: waspadaKedepan, labelHari, status: 'waspada', isKedepan: true });
+  if (kritisKedepan.length > 0) cards.push({ bg: bgKritis, fg: fgKritis, title: titleKritisKedepan, desc: null, list: kritisKedepan, labelHari, status: 'kritis', isKedepan: true });
+  if (waspadaKedepan.length > 0) cards.push({ bg: bgWaspada, fg: fgWaspada, title: titleWaspadaKedepan, desc: null, list: waspadaKedepan, labelHari, status: 'waspada', isKedepan: true });
 
   const adaKedepan = habisKedepan.length > 0 || kritisKedepan.length > 0 || waspadaKedepan.length > 0 || amanKedepan.length > 0;
+  
   if (habis.length === 0 && kritis.length === 0 && waspada.length === 0 && !adaKedepan) {
-    if (aman.length > 0) cards.push({ bg: bgAman, fg: fgAman, title: `Boleh bolos kok ${labelHari.toLowerCase()}`, desc: 'Semua kelas jatah absennya aman.', list: null, labelHari, status: 'aman', isKedepan: false });
+    if (aman.length > 0) cards.push({ bg: bgAman, fg: fgAman, title: `Aman semua ${labelHari.toLowerCase()}!`, desc: 'Boleh bolos kok kalau mau.', list: null, labelHari, status: 'aman', isKedepan: false });
   } else if (aman.length > 0) {
     cards.push({ bg: bgAman, fg: fgAman, title: `Kelas yang aman ${labelHari.toLowerCase()}:`, desc: null, list: aman, labelHari, status: 'aman', isKedepan: false });
   }
 
   if (amanKedepan.length > 0) {
-    cards.push({ bg: bgAman, fg: fgAman, title: `Kelas yang aman kedepannya:`, desc: null, list: amanKedepan, labelHari, status: 'aman', isKedepan: true });
+    const semuaAmanKedepan = (amanKedepan.length === jadwal.length) && jadwal.length > 0;
+    const tAmanKedepan = semuaAmanKedepan ? 'Aman semua kedepannya!' : 'Kelas yang aman kedepannya:';
+    const dAmanKedepan = semuaAmanKedepan ? 'Semua jatah absen kelas masih banyak.' : null;
+    const lAmanKedepan = semuaAmanKedepan ? null : amanKedepan;
+    cards.push({ bg: bgAman, fg: fgAman, title: tAmanKedepan, desc: dAmanKedepan, list: lAmanKedepan, labelHari, status: 'aman', isKedepan: true });
   }
 
   if (cards.length === 0) {
-    cards.push({ bg: bgAman, fg: fgAman, title: `Boleh bolos kok ${labelHari.toLowerCase()}`, desc: 'Semua kelas jatah absennya aman.', list: null, labelHari, status: 'aman', isKedepan: false });
+    cards.push({ bg: bgAman, fg: fgAman, title: `Aman semua ${labelHari.toLowerCase()}!`, desc: 'Boleh bolos kok kalau mau.', list: null, labelHari, status: 'aman', isKedepan: false });
   }
 
   return cards;
