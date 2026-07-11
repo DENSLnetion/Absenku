@@ -2429,7 +2429,7 @@ function renderQuestionA() {
   const wrap = el('div', 'flow-body-content');
 
   wrap.innerHTML = `
-    <h1 class="flow-title-large">Apakah kamu hadir di kelas <i>${m.namaLengkap}</i> hari ini?</h1>
+    <h1 class="flow-title-large">Apakah kamu hadir di kelas <b style="color: var(--clr-primary); font-style: italic; font-weight: 800;">${m.namaLengkap}</b> hari ini?</h1>
     <p class="flow-subtitle">Waktu perkuliahan: ${courseConfig.jamMulai} - ${courseConfig.jamSelesai}</p>
     
     <div class="flow-choices-stack">
@@ -2475,7 +2475,7 @@ function renderQuestionB() {
   const wrap = el('div', 'flow-body-content');
 
   wrap.innerHTML = `
-    <h1 class="flow-title-large">Mengapa <b>tidak hadir</b> di kelas <i>${m.namaLengkap}</i>?</h1>
+    <h1 class="flow-title-large">Mengapa <b>tidak hadir</b> di kelas <b style="color: var(--clr-primary); font-style: italic; font-weight: 800;">${m.namaLengkap}</b>?</h1>
     
     <div class="flow-choices-stack">
       <button class="flow-btn-choice izin statelayer" id="btn-reason-izin">
@@ -2600,7 +2600,7 @@ function renderQuestionD() {
   const wrap = el('div', 'flow-body-content');
 
   wrap.innerHTML = `
-    <h1 class="flow-title-large">Bagikan laporan ke PJ kelas <i>${m.namaLengkap}</i>?</h1>
+    <h1 class="flow-title-large">Bagikan laporan ke PJ kelas <b style="color: var(--clr-primary); font-style: italic; font-weight: 800;">${m.namaLengkap}</b>?</h1>
     
     <div class="flow-choices-stack">
       <button class="flow-btn-choice primary statelayer" id="btn-share-pj">
@@ -2894,7 +2894,7 @@ function renderPJStep2(){
   `).join('');
 
   wrap.innerHTML = `
-    <h1 class="flow-title-large">Kelas <i>${m.namaLengkap}</i> pindahnya ke hari apa nih?</h1>
+    <h1 class="flow-title-large">Kelas <b style="color: var(--clr-primary); font-style: italic; font-weight: 800;">${m.namaLengkap}</b> pindahnya ke hari apa nih?</h1>
     <div class="flow-choices-stack" style="gap:8px;max-height:100%;margin-top:0;">${listHtml}</div>
     <div class="flow-footer-actions" style="margin-top:14px;">
       <button class="flow-btn-choice primary statelayer" id="pj-confirm-hari" style="justify-content:center;text-align:center;">
@@ -3783,10 +3783,14 @@ function renderQuickCheck(){
   if (semuaHabisJatah) {
     const root = $('#scr-quickcheck'); root.innerHTML = '';
     const wrap = el('div', 'flow-body-content scroll-y');
-    wrap.style.cssText = 'padding:40px 24px;justify-content:center;align-items:center;flex:1;background:var(--clr-error);color:var(--clr-on-error);text-align:center;';
+    wrap.style.cssText = 'display:flex;flex-direction:column;justify-content:flex-start;padding:calc(64px + var(--sat)) 24px 32px;flex:1;background:var(--clr-error);color:var(--clr-on-error);';
     wrap.innerHTML = `
-      <div style="font-size:clamp(32px, 8vw, 40px); font-weight:900; text-transform:uppercase; line-height:1.1;">Hari ini tolong pastikan untuk hadir. Karena semua jatah absen mu di hari ini telah habis.</div>
-      <button class="btn btn-filled statelayer mt24" id="btn-qc-kritis-ok" style="background:var(--clr-on-error);color:var(--clr-error);font-weight:800;height:52px;font-size:16px;width:100%;">Saya Mengerti & Akan Hadir</button>
+      <h1 style="text-align:left;font-family:var(--font-display);font-size:clamp(36px, 10vw, 46px);font-weight:900;line-height:1.05;letter-spacing:-1px;text-transform:uppercase;margin-bottom:40px;">
+        Hari ini tolong pastikan untuk hadir. Karena semua jatah absen mu di hari ini telah habis.
+      </h1>
+      <button class="flow-btn-choice statelayer mt24" id="btn-qc-kritis-ok" style="background:var(--clr-on-error);color:var(--clr-error);border:none;justify-content:center;text-align:center;">
+        Saya Mengerti & Akan Hadir
+      </button>
     `;
     root.appendChild(wrap);
     $('#btn-qc-kritis-ok', wrap).onclick = () => {
