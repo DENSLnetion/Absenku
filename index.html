@@ -1821,7 +1821,7 @@ function renderDashboard(){
     libur:   { icon: 'check', label: 'Aman Terkendali' },
   };
 
-  function renderRadarCard(){
+  function renderRadarCard(isAdvancing = false){
     const c = radarCards[radarIndex];
 
     // Terapkan premium background: Cahaya lebih soft dan natural
@@ -1874,9 +1874,6 @@ function renderDashboard(){
     containerEl.style.padding = '32px 28px';
     containerEl.style.justifyContent = 'flex-start';
 
-    contentEl.classList.remove('radar-content-anim');
-    void contentEl.offsetWidth; 
-
     // Tidak ada decoHtml lagi, langsung render konten teks murni
     contentEl.innerHTML = `
       <div style="position:relative; z-index:2;">
@@ -1888,12 +1885,18 @@ function renderDashboard(){
         ${listHtml}
       </div>
     `;
-    contentEl.classList.add('radar-content-anim');
+
+    contentEl.classList.remove('radar-content-anim');
+    if (isAdvancing || !window._radarFirstLoadAnim) {
+      void contentEl.offsetWidth;
+      contentEl.classList.add('radar-content-anim');
+      window._radarFirstLoadAnim = true;
+    }
   }
 
   function advanceRadar(){
     radarIndex = (radarIndex + 1) % radarCards.length;
-    renderRadarCard();
+    renderRadarCard(true);
   }
 
   function resetRadarTimer(){
