@@ -1821,21 +1821,24 @@ function renderDashboard(){
 
   function renderRadarCard(){
     const c = radarCards[radarIndex];
-    containerEl.style.backgroundColor = c.bg;
+
+    // Terapkan premium background (Grain + Radial Glow + Base Gradient) langsung ke container luar
+    containerEl.style.background = `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"), radial-gradient(circle at 100% 0%, color-mix(in srgb, ${c.fg} 12%, transparent) 0%, transparent 75%), linear-gradient(135deg, color-mix(in srgb, ${c.bg} 60%, transparent) 0%, ${c.bg} 100%), ${c.bg}`;
     containerEl.style.color = c.fg;
+
+    // Terapkan Glass Edge Bevel
+    containerEl.style.boxShadow = 'inset 0 1.5px 2px rgba(255,255,255,0.15), inset 0 -1.5px 2px rgba(0,0,0,0.05), 0 12px 32px rgba(0,0,0,0.08)';
+    containerEl.style.border = `1px solid color-mix(in srgb, ${c.fg} 15%, transparent)`;
 
     const count = c.list ? c.list.length : 0;
     const badgeCfg = STATUS_BADGE[c.status] || null;
 
-    // Skala ukuran font & jarak ekstra besar saat item sedikit — berlaku sama
-    // untuk semua status (habis/kritis/waspada/aman) biar layout konsisten.
     let titleFontSize = 'clamp(22px, 6vw, 28px)';
     let listFontSize = 'clamp(14px, 4vw, 15px)';
     let listGap = '8px';
     let descFontSize = 'clamp(14px, 4vw, 15px)';
 
     if (count <= 1) {
-      // Jika 1 matkul / kosong: font jumbo agar judul padat (min 3 baris) & ruang terisi penuh
       titleFontSize = 'clamp(28px, 8vw, 34px)';
       listFontSize = 'clamp(18px, 5vw, 20px)';
       listGap = '14px';
@@ -1847,32 +1850,6 @@ function renderDashboard(){
       descFontSize = 'clamp(15px, 4vw, 16px)';
     }
 
-    // Dekorasi lingkaran blur khas M3 Expressive — sekarang tampil di SEMUA
-    // status, bukan cuma aman/libur, biar card tidak terasa "kosong"/polos
-    // dan seluruh status punya bahasa visual yang sama.
-    const decoHtml = `
-      <!-- Ambient Aurora Glow -->
-      <div aria-hidden="true" style="position:absolute; top:-30%; left:-20%; width:140%; height:140%; background: radial-gradient(circle at 10% 10%, ${c.fg} 0%, transparent 55%), radial-gradient(circle at 90% 90%, ${c.fg} 0%, transparent 55%); opacity:0.12; filter:blur(40px); pointer-events:none; animation: mesh-breathe 12s ease-in-out infinite alternate; mix-blend-mode: hard-light;"></div>
-      
-      <!-- Organic Blob Top Right -->
-      <svg aria-hidden="true" viewBox="0 0 200 200" style="position:absolute; top:-40px; right:-50px; width:180px; height:180px; fill:${c.fg}; opacity:0.04; pointer-events:none; transform:rotate(20deg);">
-        <path d="M47.7,-60.5C61.3,-52.1,71.5,-37.2,76.5,-21C81.5,-4.8,81.3,12.7,73.8,27.1C66.3,41.5,51.5,52.8,36,60.6C20.5,68.4,4.3,72.7,-11.2,71.2C-26.7,69.7,-41.5,62.4,-53.8,50.7C-66.1,39,-75.9,22.9,-77.8,6.2C-79.7,-10.5,-73.7,-27.8,-63.1,-41.3C-52.5,-54.8,-37.3,-64.5,-21.8,-68.8C-6.3,-73.1,9.5,-71.6,24.3,-66.6L47.7,-60.5Z" />
-      </svg>
-      
-      <!-- Organic Blob Bottom Left -->
-      <svg aria-hidden="true" viewBox="0 0 200 200" style="position:absolute; bottom:-60px; left:-40px; width:190px; height:190px; fill:${c.fg}; opacity:0.05; pointer-events:none; transform:rotate(-15deg);">
-        <path d="M41.8,-63C53.7,-53.6,62.5,-40.4,68.7,-25.7C74.9,-11,78.5,5.2,74.5,19.6C70.5,34,58.9,46.6,45.4,55.4C31.9,64.2,16.5,69.2,0.4,68.7C-15.7,68.2,-31.4,62.2,-43.8,52.5C-56.2,42.8,-65.3,29.4,-68.9,14.6C-72.5,-0.2,-70.6,-16.4,-63.1,-30.2C-55.6,-44,-42.5,-55.4,-28.4,-61.8C-14.3,-68.2,0.8,-69.6,15.6,-66C30.4,-62.4,45,-55,41.8,-63Z" />
-      </svg>
-      
-      <!-- Premium Noise/Grain Overlay -->
-      <div aria-hidden="true" style="position:absolute; inset:0; border-radius:inherit; opacity:0.04; background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.75%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E'); pointer-events:none; mix-blend-mode: overlay;"></div>
-      
-      <!-- Glass Edge Highlight -->
-      <div aria-hidden="true" style="position:absolute; inset:0; border-radius:inherit; box-shadow: inset 0 1.5px 3px rgba(255,255,255,0.25), inset 0 -1.5px 4px rgba(0,0,0,0.06); pointer-events:none;"></div>
-    `;
-
-    // Badge kecil di atas judul — sekarang seragam untuk SEMUA status, hanya
-    // ikon & labelnya yang beda sesuai tingkat urgensi (habis/kritis/waspada/aman).
     let finalBadgeLabel = badgeCfg ? badgeCfg.label : '';
     let finalBadgeIcon = badgeCfg ? badgeCfg.icon : '';
     if (badgeCfg && c.isKedepan) {
@@ -1884,22 +1861,18 @@ function renderDashboard(){
       ? `<div style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:${c.fg}; color:${c.bg}; opacity:0.9; font-size:12px; font-weight:800; letter-spacing:0.3px; text-transform:uppercase; width:fit-content; margin-bottom:14px;">${svg(finalBadgeIcon)}<span>${finalBadgeLabel}</span></div>`
       : '';
 
-    // Menghilangkan &bull; karena sudah di-generate via CSS ::before
     const listHtml = c.list ? `<ul class="radar-card-list" style="margin-top:20px; padding:0; font-size:${listFontSize}; font-weight:700; opacity:0.95; display:flex; flex-direction:column; gap:${listGap};">` + c.list.map(n=>`<li style="list-style:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n}</li>`).join('') + '</ul>' : '';
     const descHtml = c.desc ? `<div style="font-size:${descFontSize}; font-weight:500; opacity:0.85; margin-top:14px; line-height:1.5;">${c.desc}</div>` : '';
 
-    // Padding & alignment konten seragam untuk semua status; hanya menyesuaikan
-    // secara proporsional saat list kosong (mis. "Kosong"/libur tanpa item)
-    // supaya konten tetap terpusat rapi, bukan menempel di atas.
     containerEl.style.padding = '32px 28px';
     containerEl.style.justifyContent = count === 0 ? 'center' : 'flex-start';
 
     contentEl.classList.remove('radar-content-anim');
     void contentEl.offsetWidth; 
 
+    // Tidak ada decoHtml lagi, langsung render konten teks murni
     contentEl.innerHTML = `
-      ${decoHtml}
-      <div style="position:relative;">
+      <div style="position:relative; z-index:2;">
         ${badgeHtml}
         <div style="font-family:var(--font-display); font-size:${titleFontSize}; font-weight:800; line-height:1.15; letter-spacing:-0.5px; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;">
           ${c.title}
