@@ -286,6 +286,7 @@ a{color:inherit; text-decoration:none;}
 .chip.izin.selected{background:var(--clr-izin-container); color:var(--clr-on-primary-container); border-color:transparent;}
 .chip.sakit.selected{background:var(--clr-sakit-container); color:var(--clr-on-secondary-container); border-color:transparent;}
 .chip.bolos.selected{background:var(--clr-bolos-container); color:var(--clr-on-bolos-container); border-color:transparent;}
+.chip.data_lama.selected { background: var(--clr-surface-container-highest); color: var(--clr-on-surface); border-color: transparent; }
 
 /* ---- segmented button ---- */
 .segmented{display:flex; border:2px solid var(--clr-outline-variant); border-radius:var(--shape-full); overflow:hidden;}
@@ -1771,6 +1772,7 @@ function startOnboarding(){
 /* =========================================================
    DASHBOARD
    ========================================================= */
+let radarIndex = 0;
 function renderDashboard(){
   const root = $('#tab-dashboard');
   root.innerHTML='';
@@ -1795,7 +1797,7 @@ function renderDashboard(){
   statCard.style.padding = '0';
   root.appendChild(statCard);
 
-  let radarIndex = 0;
+  // radarIndex sekarang di scope global (lihat atas file) agar tidak reset saat pindah tab
 
   // Container dibuat SEKALI SAJA — tidak di-re-render penuh tiap ganti card
   const containerEl = el('div','radar-card-container statelayer');
@@ -1870,7 +1872,7 @@ function renderDashboard(){
     const descHtml = c.desc ? `<div style="font-size:${descFontSize}; font-weight:500; opacity:0.85; margin-top:14px; line-height:1.5;">${c.desc}</div>` : '';
 
     containerEl.style.padding = '32px 28px';
-    containerEl.style.justifyContent = count === 0 ? 'center' : 'flex-start';
+    containerEl.style.justifyContent = 'flex-start';
 
     contentEl.classList.remove('radar-content-anim');
     void contentEl.offsetWidth; 
@@ -1902,7 +1904,7 @@ function renderDashboard(){
   }
 
   renderRadarCard();
-  resetRadarTimer();
+  // resetRadarTimer(); // dihapus: jangan reset timer/carousel tiap kali dashboard di-render ulang (pindah tab)
   
   // Override List (Jadwal Pindahan Aktif) - di bawah Radar Card
   const activeOv = DB.data.jadwalOverride.filter(o=>o.status==='aktif');
@@ -2034,107 +2036,146 @@ function renderKelas(){
 function openDetailProgressMatkul(matkulId) {
   const m = matkulById(matkulId);
   if (!m) return;
-  const list = riwayatAktif().filter(r => r.matkulId === matkulId).sort((a,b) => b.tanggal.localeCompare(a.tanggal));
   const limit = limitUntukMatkul(m);
 
   openSheet((body, closeSheet) => {
-    body.appendChild(el('p', 'txt-body muted mt8', 'Riwayat presensi kelas semester berjalan'));
+    function renderContent() {
+      body.innerHTML = '';
+      const list = riwayatAktif().filter(r => r.matkulId === matkulId).sort((a,b) => b.tanggal.localeCompare(a.tanggal));
 
-    const isOver = list.length > limit;
-    const bg = isOver ? 'var(--clr-error-container)' : 'var(--clr-primary-container)';
-    const fg = isOver ? 'var(--clr-on-error-container)' : 'var(--clr-on-primary-container)';
-    const accent = isOver ? 'var(--clr-error)' : 'var(--clr-primary)';
-    const accentOn = isOver ? 'var(--clr-on-error)' : 'var(--clr-on-primary)';
+      body.appendChild(el('p', 'txt-body muted mt8', 'Riwayat presensi kelas semester berjalan'));
 
-    const statusCard = el('div', 'mt16');
-    statusCard.style.cssText = `position:relative;overflow:hidden;background:${bg};color:${fg};border-radius:32px;padding:24px;`;
-    statusCard.innerHTML = `
-      <div style="position:absolute;top:-44px;right:-36px;width:150px;height:150px;border-radius:50%;background:${accent};opacity:0.12;"></div>
-      <div style="position:absolute;bottom:-64px;left:-34px;width:130px;height:130px;border-radius:50%;background:${accent};opacity:0.08;"></div>
-      <div style="position:relative;">
-        <div class="txt-title-sm" style="font-weight:700;font-size:16px;line-height:1.3;">${m.namaLengkap}</div>
-        <div class="row between" style="align-items:flex-end;margin-top:22px;gap:12px;">
-          <div class="stack" style="gap:2px;">
-            <span style="font-size:11.5px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;opacity:0.7;">Total Ketidakhadiran</span>
-            <div style="font-family:var(--font-display);font-weight:800;font-size:46px;line-height:1.05;letter-spacing:-1.5px;">${list.length}<span style="font-size:22px;font-weight:600;opacity:0.6;">/${limit}</span></div>
+      const isOver = list.length > limit;
+      const bg = isOver ? 'var(--clr-error-container)' : 'var(--clr-primary-container)';
+      const fg = isOver ? 'var(--clr-on-error-container)' : 'var(--clr-on-primary-container)';
+      const accent = isOver ? 'var(--clr-error)' : 'var(--clr-primary)';
+      const accentOn = isOver ? 'var(--clr-on-error)' : 'var(--clr-on-primary)';
+
+      const statusCard = el('div', 'mt16');
+      statusCard.style.cssText = `position:relative;overflow:hidden;background:${bg};color:${fg};border-radius:32px;padding:24px;`;
+      statusCard.innerHTML = `
+        <div style="position:absolute;top:-44px;right:-36px;width:150px;height:150px;border-radius:50%;background:${accent};opacity:0.12;"></div>
+        <div style="position:absolute;bottom:-64px;left:-34px;width:130px;height:130px;border-radius:50%;background:${accent};opacity:0.08;"></div>
+        <div style="position:relative;">
+          <div class="txt-title-sm" style="font-weight:700;font-size:16px;line-height:1.3;">${m.namaLengkap}</div>
+          <div class="row between" style="align-items:flex-end;margin-top:22px;gap:12px;">
+            <div class="stack" style="gap:2px;">
+              <span style="font-size:11.5px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;opacity:0.7;">Total Ketidakhadiran</span>
+              <div style="font-family:var(--font-display);font-weight:800;font-size:46px;line-height:1.05;letter-spacing:-1.5px;">${list.length}<span style="font-size:22px;font-weight:600;opacity:0.6;">/${limit}</span></div>
+            </div>
+            <span style="flex-shrink:0;display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:999px;background:${accent};color:${accentOn};font-size:11.5px;font-weight:800;letter-spacing:0.2px;white-space:nowrap;">${isOver ? 'MELEBIHI BATAS' : 'BATAS TOLERANSI ' + limit + 'X'}</span>
           </div>
-          <span style="flex-shrink:0;display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:999px;background:${accent};color:${accentOn};font-size:11.5px;font-weight:800;letter-spacing:0.2px;white-space:nowrap;">${isOver ? 'MELEBIHI BATAS' : 'BATAS TOLERANSI ' + limit + 'X'}</span>
-        </div>
-      </div>
-    `;
-    body.appendChild(statusCard);
-
-    const actionRow = el('div', 'row between mt24');
-    actionRow.innerHTML = '<span class="txt-body muted" style="font-weight:700; font-size:11.5px; letter-spacing:0.5px; text-transform:uppercase;">INPUT DATA LAMA</span>';
-    const btns = el('div', 'row gap8');
-    const btnMinus = el('button', 'btn-icon statelayer');
-    btnMinus.style.background = 'var(--clr-surface-container-high)';
-    btnMinus.style.width = '44px';
-    btnMinus.style.height = '44px';
-    btnMinus.innerHTML = svg('minus');
-    const btnPlus = el('button', 'btn-icon statelayer');
-    btnPlus.style.background = 'var(--clr-surface-container-high)';
-    btnPlus.style.width = '44px';
-    btnPlus.style.height = '44px';
-    btnPlus.innerHTML = svg('plus');
-    btnMinus.onclick = () => kurangiAbsenManual(m, () => { closeSheet(); setTimeout(() => openDetailProgressMatkul(matkulId), 260); });
-    btnPlus.onclick = () => tambahAbsenManual(m, () => { closeSheet(); setTimeout(() => openDetailProgressMatkul(matkulId), 260); });
-    btns.appendChild(btnMinus);
-    btns.appendChild(btnPlus);
-    actionRow.appendChild(btns);
-    body.appendChild(actionRow);
-
-    const titleH = el('div', 'txt-title-sm mt24', 'Catatan Absensi');
-    body.appendChild(titleH);
-
-    if (list.length === 0) {
-      const empty = el('div', 'empty mt12');
-      empty.innerHTML = svg('check') + '<div class="txt-body" style="font-weight:700;margin-top:8px;">Presensi Aman Terkendali</div><div class="txt-body muted" style="font-size:13px;">Kehadiran kamu di kelas ini masih 100%.</div>';
-      body.appendChild(empty);
-      return;
-    }
-
-    const timeline = el('div', 'stack gap12 mt12');
-    list.forEach(r => {
-      const card = el('div', 'card row between', '');
-      card.style.padding = '14px 18px';
-      card.innerHTML = `
-        <div class="stack" style="gap:4px;flex:1;">
-          <div class="txt-body-lg" style="font-weight:700;">${fmtTanggalPanjang(r.tanggal)}</div>
-          <div class="txt-body muted" style="font-size:13.5px;">${r.keterangan || 'Tanpa catatan tambahan'}</div>
-        </div>
-        <div class="row gap12">
-          <span class="chip ${r.alasan} selected" style="height: 32px; padding: 0 12px; font-size:12px; border:none; font-weight:700;">${r.alasan.toUpperCase()}</span>
-          <button class="btn-icon statelayer btn-quick-edit" data-id="${r.id}" style="width:40px;height:40px;">${svg('edit')}</button>
-          <button class="btn-icon statelayer btn-quick-delete" data-id="${r.id}" style="width:40px;height:40px;color:var(--clr-error);">${svg('trash')}</button>
         </div>
       `;
-      $('.btn-quick-edit', card).onclick = (e) => {
-        e.stopPropagation();
-        closeSheet();
-        setTimeout(() => openEditRiwayat(r), 260);
+      body.appendChild(statusCard);
+
+      const actionRow = el('div', 'row between mt24');
+      actionRow.innerHTML = '<span class="txt-body muted" style="font-weight:700; font-size:11.5px; letter-spacing:0.5px; text-transform:uppercase;">INPUT DATA LAMA</span>';
+      const btns = el('div', 'row gap8');
+      const btnMinus = el('button', 'btn-icon statelayer');
+      btnMinus.style.background = 'var(--clr-surface-container-high)';
+      btnMinus.style.width = '44px';
+      btnMinus.style.height = '44px';
+      btnMinus.innerHTML = svg('minus');
+      const btnPlus = el('button', 'btn-icon statelayer');
+      btnPlus.style.background = 'var(--clr-surface-container-high)';
+      btnPlus.style.width = '44px';
+      btnPlus.style.height = '44px';
+      btnPlus.innerHTML = svg('plus');
+
+      btnPlus.onclick = () => {
+        haptic();
+        if (list.length >= limit) { showSnackbar('Batas absen sudah maksimal!'); return; }
+        const entry = {
+          id: uid(),
+          matkulId: m.id,
+          tanggal: todayISO(),
+          hari: HARI[todayHariIndex()],
+          alasan: 'data_lama',
+          keterangan: 'Data Lama (Input Manual)',
+          sudahDikirimWA: false,
+          waktuDibuat: Date.now(),
+          dihapusPada: null,
+          overrideId: null,
+          pengaliKehadiranSnapshot: 1,
+          inputLama: true
+        };
+        DB.data.riwayatAbsen.push(entry);
+        dbSaveDebounced();
+        renderDashboard();
+        renderContent();
       };
-      $('.btn-quick-delete', card).onclick = (e) => {
-        e.stopPropagation();
-        showDialog({
-          title: 'Hapus catatan ini?',
-          body: 'Dapat dipulihkan kapan saja lewat menu Baru Saja Dihapus dalam 30 hari.',
-          actions: [
-            { label: 'Batal', style: 'btn-text' },
-            { label: 'Hapus', style: 'btn-filled', onClick: () => {
-              haptic();
-              r.dihapusPada = Date.now();
-              dbSaveDebounced();
-              closeSheet();
-              setTimeout(() => openDetailProgressMatkul(matkulId), 260);
-              showSnackbar('Catatan dihapus');
-            }}
-          ]
-        });
+
+      btnMinus.onclick = () => {
+        haptic();
+        const candidates = list;
+        if (candidates.length === 0) { showSnackbar('Belum ada data absen untuk dikurangi'); return; }
+        const target = candidates[0];
+        target.dihapusPada = Date.now();
+        dbSaveDebounced();
+        renderDashboard();
+        renderContent();
       };
-      timeline.appendChild(card);
-    });
-    body.appendChild(timeline);
+
+      btns.appendChild(btnMinus);
+      btns.appendChild(btnPlus);
+      actionRow.appendChild(btns);
+      body.appendChild(actionRow);
+
+      const titleH = el('div', 'txt-title-sm mt24', 'Catatan Absensi');
+      body.appendChild(titleH);
+
+      if (list.length === 0) {
+        const empty = el('div', 'empty mt12');
+        empty.innerHTML = svg('check') + '<div class="txt-body" style="font-weight:700;margin-top:8px;">Presensi Aman Terkendali</div><div class="txt-body muted" style="font-size:13px;">Kehadiran kamu di kelas ini masih 100%.</div>';
+        body.appendChild(empty);
+        return;
+      }
+
+      const timeline = el('div', 'stack gap12 mt12');
+      list.forEach(r => {
+        const card = el('div', 'card row between', '');
+        card.style.padding = '14px 18px';
+        card.innerHTML = `
+          <div class="stack" style="gap:4px;flex:1;">
+            <div class="txt-body-lg" style="font-weight:700;">${fmtTanggalPanjang(r.tanggal)}</div>
+            <div class="txt-body muted" style="font-size:13.5px;">${r.keterangan || 'Tanpa catatan tambahan'}</div>
+          </div>
+          <div class="row gap12">
+            <span class="chip ${r.alasan} selected" style="height: 32px; padding: 0 12px; font-size:12px; border:none; font-weight:700;">${r.alasan === 'data_lama' ? 'DATA LAMA' : r.alasan.toUpperCase()}</span>
+            <button class="btn-icon statelayer btn-quick-edit" data-id="${r.id}" style="width:40px;height:40px;">${svg('edit')}</button>
+            <button class="btn-icon statelayer btn-quick-delete" data-id="${r.id}" style="width:40px;height:40px;color:var(--clr-error);">${svg('trash')}</button>
+          </div>
+        `;
+        $('.btn-quick-edit', card).onclick = (e) => {
+          e.stopPropagation();
+          closeSheet();
+          setTimeout(() => openDetailProgressMatkul(matkulId), 260);
+        };
+        $('.btn-quick-delete', card).onclick = (e) => {
+          e.stopPropagation();
+          showDialog({
+            title: 'Hapus catatan ini?',
+            body: 'Dapat dipulihkan kapan saja lewat menu Baru Saja Dihapus dalam 30 hari.',
+            actions: [
+              { label: 'Batal', style: 'btn-text' },
+              { label: 'Hapus', style: 'btn-filled', onClick: () => {
+                haptic();
+                r.dihapusPada = Date.now();
+                dbSaveDebounced();
+                renderDashboard();
+                renderContent();
+                showSnackbar('Catatan dihapus');
+              }}
+            ]
+          });
+        };
+        timeline.appendChild(card);
+      });
+      body.appendChild(timeline);
+    }
+
+    renderContent();
   }, { title: 'Detail Presensi Kelas', fullscreen: true });
 }
 
@@ -2308,7 +2349,7 @@ function renderFlowStep1() {
   `;
   body.appendChild(wrap);
 
-  const rawToday = jadwalEfektifTanggal(todayISO()).filter(j => !sudahAbsenPadaTanggal(j.matkulId, todayISO()));
+  const rawToday = jadwalEfektifTanggal(todayISO()).filter(j => !sudahAbsenPadaTanggal(j.matkulId, todayISO()) && absenTerpakaiUntukMatkul(j.matkulId) < limitUntukMatkul(matkulById(j.matkulId)));
 
   const handleFilterSelection = (filtered) => {
     haptic();
