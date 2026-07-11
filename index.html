@@ -1969,7 +1969,7 @@ function openDetailProgressMatkul(matkulId) {
             <button class="btn-icon statelayer btn-quick-delete" data-id="${r.id}" style="width:40px;height:40px;color:var(--clr-error);">${svg('trash')}</button>
           </div>
         `;
-        card.onclick = () => { haptic(); openEditRiwayat(r); };
+        card.onclick = () => { haptic(); navPop(); setTimeout(() => openEditRiwayat(r), 350); };
         $('.btn-quick-delete', card).onclick = (e) => {
           e.stopPropagation();
           showDialog({
@@ -3294,11 +3294,26 @@ function openEditRiwayat(r){
       chipRow.appendChild(chip);
     });
     body.appendChild(chipRow);
-    const ta = el('textarea','m3-input'); ta.value=r.keterangan||''; ta.style.marginTop='16px'; ta.addEventListener('input',()=>r.keterangan=ta.value);
+    body.appendChild(el('label','txt-label mt16','Edit Keterangan'));
+    const ta = el('textarea','m3-input'); ta.value=r.keterangan||''; ta.style.marginTop='8px'; ta.addEventListener('input',()=>r.keterangan=ta.value);
     body.appendChild(ta);
-    const btn = el('button','btn btn-filled statelayer mt24','Simpan Perubahan'); btn.style.width='100%';
-    btn.onclick=()=>{ dbSaveDebounced(); navPop(); renderRiwayat(); showSnackbar('Laporan berhasil diperbarui'); };
-    body.appendChild(btn);
+
+    const actionRow = el('div','row gap12 mt24');
+    const btnKirim = el('button','btn btn-tonal statelayer');
+    btnKirim.innerHTML = svg('send')+'<span>'+(r.sudahDikirimWA ? 'Kirim Ulang' : 'Kirim ke PJ')+'</span>';
+    btnKirim.onclick = () => {
+      haptic();
+      kirimWA(generatePesanWA([r]));
+      r.sudahDikirimWA = true;
+      dbSaveDebounced();
+      navPop();
+      renderRiwayat();
+    };
+    const btnSimpan = el('button','btn btn-filled statelayer', 'Simpan'); btnSimpan.style.flex = '1';
+    btnSimpan.onclick=()=>{ dbSaveDebounced(); navPop(); renderRiwayat(); showSnackbar('Laporan berhasil diperbarui'); };
+    actionRow.appendChild(btnKirim);
+    actionRow.appendChild(btnSimpan);
+    body.appendChild(actionRow);
   },{title:''});
 }
 function renderSidePanelMain(panel){
@@ -3732,6 +3747,8 @@ function popStatusBarLayer(){
    QUICK-CHECK
    ========================================================= */
 function shouldShowQuickCheck(){
+  const jadwalHariIni = jadwalEfektifTanggal(todayISO());
+  if (jadwalHariIni.length === 0) return false;
   const today = todayISO();
   if(DB.data.appState.absenCommittedTanggal === today) return false;
   if(DB.data.appState.qcBisukanTanggal === today) return false;
@@ -3756,6 +3773,32 @@ function renderQuickCheck(){
   const todayIso = todayISO();
   const jadwalHariIni = jadwalEfektifTanggal(todayIso);
   const nowMin = nowMinutes();
+
+  // KONDISI KRITIS: seluruh jadwal hari ini sudah habis jatah absennya
+  const semuaHabisJatah = jadwalHariIni.length > 0 && jadwalHariIni.every(j => {
+    const m = matkulById(j.matkulId);
+    return m && absenTerpakaiUntukMatkul(m.id) >= limitUntukMatkul(m);
+  });
+
+  if (semuaHabisJatah) {
+    const root = $('#scr-quickcheck'); root.innerHTML = '';
+    const wrap = el('div', 'flow-body-content scroll-y');
+    wrap.style.cssText = 'padding:40px 24px;justify-content:center;align-items:center;flex:1;background:var(--clr-error);color:var(--clr-on-error);text-align:center;';
+    wrap.innerHTML = `
+      <div style="font-size:clamp(32px, 8vw, 40px); font-weight:900; text-transform:uppercase; line-height:1.1;">Hari ini tolong pastikan untuk hadir. Karena semua jatah absen mu di hari ini telah habis.</div>
+      <button class="btn btn-filled statelayer mt24" id="btn-qc-kritis-ok" style="background:var(--clr-on-error);color:var(--clr-error);font-weight:800;height:52px;font-size:16px;width:100%;">Saya Mengerti & Akan Hadir</button>
+    `;
+    root.appendChild(wrap);
+    $('#btn-qc-kritis-ok', wrap).onclick = () => {
+      haptic();
+      DB.data.appState.qcSelesaiTanggal = todayIso;
+      navPop();
+      finishQuickCheck();
+    };
+    showScreen('scr-quickcheck');
+    navPush({type:'screen', close:()=> finishQuickCheck()});
+    return;
+  }
 
   let jadwalBerlangsung = null;
   let maxSelesai = 0;
@@ -3834,9 +3877,33 @@ function renderQuickCheck(){
   }
 
   // KONDISI C: tidak ada kondisi khusus, tampilkan Quick Check harian biasa
+  let jmlHabis = 0, jmlKritis = 0, jmlWaspada = 0, jmlAman = 0;
+  jadwalHariIni.forEach(j=>{
+    const m = matkulById(j.matkulId);
+    if(!m) return;
+    const sisa = limitUntukMatkul(m) - absenTerpakaiUntukMatkul(m.id);
+    if (sisa <= 0) jmlHabis++;
+    else if (sisa === 1) jmlKritis++;
+    else if (sisa === 2) jmlWaspada++;
+    else jmlAman++;
+  });
+
+  let kalimatDinamis = '';
+  let kalimatWarna = 'var(--clr-on-surface-variant)';
+  if (jmlHabis > 0) {
+    kalimatDinamis = `(Awas, jatah bolos ${jmlHabis} kelas kamu udah habis!)`;
+    kalimatWarna = 'var(--clr-error)';
+  } else if (jmlKritis > 0) {
+    kalimatDinamis = '(Hati-hati, jatah absen tipis. Tersisa 1x lagi!)';
+    kalimatWarna = 'var(--clr-tertiary)';
+  } else {
+    kalimatDinamis = '(Jatah absen hari ini masih aman semua kok.)';
+    kalimatWarna = 'var(--clr-primary)';
+  }
+
   tampilkanUIQuickCheck({
     judul: 'Mau absen hari ini?',
-    subjudul: 'Yuk catat kehadiran kamu hari ini sebelum lanjut buka aplikasi.',
+    subjudul: `Yuk catat kehadiran kamu hari ini sebelum lanjut buka aplikasi.<br><br><span style="font-weight:700;color:${kalimatWarna};">${kalimatDinamis}</span>`,
     labelYa: 'Mau', labelTidak: 'Lanjut ke Aplikasi',
     tampilkanSkip: true,
     onYa: ()=>{
