@@ -1822,13 +1822,19 @@ function renderDashboard(){
   function renderRadarCard(){
     const c = radarCards[radarIndex];
 
-    // Terapkan premium background (Grain + Radial Glow + Base Gradient) langsung ke container luar
-    containerEl.style.background = `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"), radial-gradient(circle at 100% 0%, color-mix(in srgb, ${c.fg} 12%, transparent) 0%, transparent 75%), linear-gradient(135deg, color-mix(in srgb, ${c.bg} 60%, transparent) 0%, ${c.bg} 100%), ${c.bg}`;
+    // Terapkan premium background: Lebih strong (Grain tebal + 2 Titik Radial Glow intens + Base Gradient)
+    containerEl.style.background = `
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E"), 
+      radial-gradient(circle at 100% -10%, color-mix(in srgb, ${c.fg} 35%, transparent) 0%, transparent 85%), 
+      radial-gradient(circle at 0% 120%, color-mix(in srgb, ${c.fg} 25%, transparent) 0%, transparent 75%), 
+      linear-gradient(135deg, color-mix(in srgb, ${c.bg} 80%, transparent) 0%, ${c.bg} 100%), 
+      ${c.bg}
+    `;
     containerEl.style.color = c.fg;
 
-    // Terapkan Glass Edge Bevel
-    containerEl.style.boxShadow = 'inset 0 1.5px 2px rgba(255,255,255,0.15), inset 0 -1.5px 2px rgba(0,0,0,0.05), 0 12px 32px rgba(0,0,0,0.08)';
-    containerEl.style.border = `1px solid color-mix(in srgb, ${c.fg} 15%, transparent)`;
+    // Terapkan Glass Edge Bevel yang lebih tajam
+    containerEl.style.boxShadow = 'inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.1), 0 16px 32px rgba(0,0,0,0.12)';
+    containerEl.style.border = `1px solid color-mix(in srgb, ${c.fg} 25%, transparent)`;
 
     const count = c.list ? c.list.length : 0;
     const badgeCfg = STATUS_BADGE[c.status] || null;
