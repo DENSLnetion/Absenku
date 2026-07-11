@@ -944,7 +944,9 @@ function defaultDB(){
       colorTheme:'cyan', 
       formatPesanWA:'Halo Kak, selamat {waktu}.\n\nSaya ingin mengabarkan bahwa hari ini saya berhalangan hadir di perkuliahan Kakak.\n\nNama: {nama}\nNIM: {nim}\nMata Kuliah: {matkul}\nTanggal: {tanggal}\nAlasan: {alasan_kata}\nKeterangan: {keterangan}\n\nTerima kasih banyak atas pengertiannya, Kak.', 
       namaPJdefault:{}, 
-      reminderAktif:false 
+      reminderAktif:false,
+      muteKirimPJSelamanya: false,
+      muteKeteranganSelamanya: false
     },
     appState:{ sudahOnboarding:false, sesiTerakhirDibuka:null, semesterSelesaiDiakui:false, absenCommittedTanggal:null, qcBisukanTanggal:null, qcSelesaiTanggal:null, qcLewatiHarianTanggal:null, qcLewatiHarianMatkulIds:null, qcAbaikanMatkul:{} }
   };
@@ -1954,8 +1956,9 @@ function openDetailProgressMatkul(matkulId) {
 
       const timeline = el('div', 'stack gap12 mt12');
       list.forEach(r => {
-        const card = el('div', 'card row between', '');
+        const card = el('div', 'card row between statelayer', '');
         card.style.padding = '14px 18px';
+        card.style.cursor = 'pointer';
         card.innerHTML = `
           <div class="stack" style="gap:4px;flex:1;">
             <div class="txt-body-lg" style="font-weight:700;">${fmtTanggalPanjang(r.tanggal)}</div>
@@ -1963,15 +1966,10 @@ function openDetailProgressMatkul(matkulId) {
           </div>
           <div class="row gap12">
             <span class="chip ${r.alasan} selected" style="height: 32px; padding: 0 12px; font-size:12px; border:none; font-weight:700;">${r.alasan === 'data_lama' ? 'DATA LAMA' : r.alasan.toUpperCase()}</span>
-            <button class="btn-icon statelayer btn-quick-edit" data-id="${r.id}" style="width:40px;height:40px;">${svg('edit')}</button>
             <button class="btn-icon statelayer btn-quick-delete" data-id="${r.id}" style="width:40px;height:40px;color:var(--clr-error);">${svg('trash')}</button>
           </div>
         `;
-        $('.btn-quick-edit', card).onclick = (e) => {
-          e.stopPropagation();
-          closeSheet();
-          setTimeout(() => openDetailProgressMatkul(matkulId), 260);
-        };
+        card.onclick = () => { haptic(); openEditRiwayat(r); };
         $('.btn-quick-delete', card).onclick = (e) => {
           e.stopPropagation();
           showDialog({
@@ -2525,6 +2523,13 @@ function renderQuestionC() {
   const courseConfig = FLOW.courses[index];
   const m = matkulById(courseConfig.matkulId);
 
+  if (DB.data.settings.muteKeteranganSelamanya) {
+    FLOW.results[m.id].keterangan = '';
+    FLOW.history.push(() => renderQuestionC());
+    renderQuestionD();
+    return;
+  }
+
   const stepPercent = 40 + Math.round((index / FLOW.courses.length) * 50);
   renderFlowHeader(`Keterangan (${index + 1}/${FLOW.courses.length})`, stepPercent);
 
@@ -2540,6 +2545,7 @@ function renderQuestionC() {
       <div class="flow-footer-actions">
         <button class="btn btn-filled statelayer" id="btn-notes-save" style="height:52px;font-size:16px;">Simpan & Lanjut</button>
         <button class="btn btn-text statelayer" id="btn-notes-skip" style="height:44px;">Lewati Catatan</button>
+        <button class="btn-text statelayer text-mute-notes" id="btn-mute-notes-forever" style="align-self:center;color:var(--clr-on-surface-variant);font-weight:700;margin-top:8px;">Bisukan Keterangan Selamanya</button>
       </div>
     </div>
   `;
@@ -2560,6 +2566,15 @@ function renderQuestionC() {
     FLOW.history.push(() => renderQuestionC());
     renderQuestionD();
   };
+
+  $('#btn-mute-notes-forever', wrap).onclick = () => {
+    haptic();
+    DB.data.settings.muteKeteranganSelamanya = true;
+    dbSaveDebounced();
+    FLOW.results[m.id].keterangan = '';
+    FLOW.history.push(() => renderQuestionC());
+    renderQuestionD();
+  };
 }
 
 /* ---- QUESTION D: BAGIKAN KE PJ (PER MATKUL) ---- */
@@ -2567,6 +2582,14 @@ function renderQuestionD() {
   const index = FLOW.currentIndex;
   const courseConfig = FLOW.courses[index];
   const m = matkulById(courseConfig.matkulId);
+
+  if (DB.data.settings.muteKirimPJSelamanya) {
+    FLOW.results[m.id].sudahDikirimWA = false;
+    FLOW.currentIndex++;
+    processCurrentCourse();
+    return;
+  }
+
   const res = FLOW.results[m.id];
   const alasanKata = { izin: 'Izin', sakit: 'Sakit', bolos: 'Tidak Hadir' };
 
@@ -2588,6 +2611,7 @@ function renderQuestionD() {
         <span>Lewati</span>
         ${svg('arrowR')}
       </button>
+      <button class="btn-text statelayer text-mute-forever" id="btn-mute-pj-forever" style="align-self:center;color:var(--clr-on-surface-variant);font-weight:700;margin-top:12px;">Bisukan Ini Selamanya</button>
     </div>
   `;
   body.appendChild(wrap);
@@ -2597,6 +2621,13 @@ function renderQuestionD() {
     FLOW.history.push(() => { FLOW.currentIndex = idxSnapshot; renderQuestionD(); });
     FLOW.currentIndex++;
     processCurrentCourse();
+  };
+
+  $('#btn-mute-pj-forever', wrap).onclick = () => {
+    haptic();
+    DB.data.settings.muteKirimPJSelamanya = true;
+    dbSaveDebounced();
+    goNext();
   };
 
   const skipBtn = $('#btn-share-skip', wrap);
@@ -3519,6 +3550,25 @@ function renderSettingsAturan(){
       inp2.addEventListener('change', ()=>{ m.limitAbsenKhusus = inp2.value===''?null:Number(inp2.value); dbSaveDebounced(); renderDashboard(); });
       row.appendChild(inp2);
       body.appendChild(row);
+    });
+
+    body.appendChild(el('div','txt-title-sm mt24','Wizard Absen'));
+    const fMutePJ = el('div','row gap8 mt16');
+    fMutePJ.innerHTML = '<input type="checkbox" id="set-mute-pj" '+(DB.data.settings.muteKirimPJSelamanya?'':'checked')+' style="width:24px;height:24px;"><label for="set-mute-pj" class="txt-body" style="font-weight:600;padding-left:4px;">Aktifkan kembali Wizard Kirim Ke PJ</label>';
+    body.appendChild(fMutePJ);
+    $('#set-mute-pj', fMutePJ).addEventListener('change', (e) => {
+      DB.data.settings.muteKirimPJSelamanya = !e.target.checked; // Jika dicentang aktifkan kembali, berarti status mutenya = false
+      dbSaveDebounced();
+      showSnackbar('Pengaturan berhasil diperbarui');
+    });
+
+    const fMuteNotes = el('div','row gap8 mt16');
+    fMuteNotes.innerHTML = '<input type="checkbox" id="set-mute-notes" '+(DB.data.settings.muteKeteranganSelamanya?'':'checked')+' style="width:24px;height:24px;"><label for="set-mute-notes" class="txt-body" style="font-weight:600;padding-left:4px;">Aktifkan kembali Wizard Keterangan Tambahan</label>';
+    body.appendChild(fMuteNotes);
+    $('#set-mute-notes', fMuteNotes).addEventListener('change', (e) => {
+      DB.data.settings.muteKeteranganSelamanya = !e.target.checked;
+      dbSaveDebounced();
+      showSnackbar('Pengaturan berhasil diperbarui');
     });
   });
 }
