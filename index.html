@@ -1397,7 +1397,7 @@ function fitFlowTitles(scope){
 /* =========================================================
    ONBOARDING — INTUITIVE STEP BY STEP
    ========================================================= */
-const OB = { step:1, totalSteps:5, tempMatkul:[], editSemesterMode:null, editEstimasiSource:null, editMode:false };
+const OB = { step:1, totalSteps:3, tempMatkul:[], editMode:false };
 function obGoto(step){
   OB.step = step;
   renderOnboarding();
@@ -1433,9 +1433,7 @@ function renderOnboarding(){
   root.appendChild(wrap);
   if(OB.step===1) obStep1(body);
   else if(OB.step===2) obStep2(body);
-  else if(OB.step===3) obStep3(body);
-  else if(OB.step===4) obStep4(body);
-  else obStep5(body);
+  else obStep3(body);
 }
 function stepFooterOnboard(container, onNext, nextLabel, disabled){
   const foot = el('div','row gap12 mt24');
@@ -1458,163 +1456,47 @@ function stepFooterOnboard(container, onNext, nextLabel, disabled){
 function obStep1(c){
   const wrap = el('div', 'onboard-step-container animate-slide-up');
   wrap.innerHTML = `
-    <h2 class="flow-title-large">Sebelum mulai, kenalan dulu yuk</h2>
-    <p class="flow-subtitle">Data ini bakal dipakai buat sapaan otomatis dan format pesan izin ke PJ Kuliah.</p>
-    <div class="stack gap16 mt12" id="ob-form-fields" style="width:100%;"></div>
+    <h2 class="flow-title-large">Kenalan & Aturan Main</h2>
+    <p class="flow-subtitle">Data ini dipakai buat template izin otomatis ke PJ Kelas.</p>
+    <div class="stack gap16 mt12" style="width:100%;">
+      <div class="field"><label>Nama Lengkap / Panggilan</label><input type="text" id="ob-nama" placeholder="Contoh: Budi"></div>
+      <div class="field"><label>NIM</label><input type="text" id="ob-nim" placeholder="Contoh: 12345678"></div>
+      <div class="field mt8"><label>Batas Maksimal Absen (Umum)</label><input type="number" id="ob-limit" value="${DB.data.settings.limitAbsenUmum || 3}" min="0"></div>
+    </div>
   `;
   c.appendChild(wrap);
   fitFlowTitle($('.flow-title-large', wrap));
-  
   const p = DB.data.profile;
-  const fields = [
-    ['nama','Nama Lengkap','text'], ['nim','NIM','text'], ['universitas','Universitas','text'],
-    ['fakultas','Fakultas','text'], ['jurusan','Jurusan / Prodi','text'], ['semesterSekarang','Semester Berjalan','number']
-  ];
-  const form = $('#ob-form-fields', wrap);
-  fields.forEach(([key,label,type])=>{
-    const f = el('div','field');
-    f.innerHTML = '<label>'+label+'</label>';
-    const inp = el('input'); inp.type=type; inp.value = p[key]||''; inp.id='ob-'+key;
-    if(type==='number'){ inp.min=1; inp.max=14; }
-    f.appendChild(inp);
-    form.appendChild(f);
-  });
-  
+  $('#ob-nama', wrap).value = p.nama || '';
+  $('#ob-nim', wrap).value = p.nim || '';
+
   stepFooterOnboard(wrap, ()=>{
     const nama = $('#ob-nama').value.trim(), nim = $('#ob-nim').value.trim();
-    if(!nama || !nim){ showSnackbar('Nama dan NIM wajib diisi ya'); return; }
-    p.nama=nama; p.nim=nim; p.universitas=$('#ob-universitas').value.trim(); p.fakultas=$('#ob-fakultas').value.trim();
-    p.jurusan=$('#ob-jurusan').value.trim(); p.semesterSekarang=Number($('#ob-semesterSekarang').value)||1;
-    dbSaveDebounced(); obAdvanceAfterEdit(2);
+    if(!nama || !nim){ showSnackbar('Nama dan NIM wajib diisi ya!'); return; }
+    // Save UI values
+    p.nama = nama; p.nim = nim;
+    DB.data.settings.limitAbsenUmum = Number($('#ob-limit').value) || 3;
+    // Auto-fill unused fields silently
+    p.universitas = p.universitas || '';
+    p.fakultas = p.fakultas || '';
+    p.jurusan = p.jurusan || '';
+    p.semesterSekarang = p.semesterSekarang || 1;
+    dbSaveDebounced();
+    obAdvanceAfterEdit(2);
   });
 }
 function obStep2(c){
-  const wrap = el('div', 'onboard-step-container animate-slide-up');
-  wrap.innerHTML = `
-    <h2 class="flow-title-large">Kalender akademik baru, posisi semester kamu sekarang ada di mana?</h2>
-    <div class="field mt12">
-      <label>Semester Berjalan</label>
-      <input type="number" id="ob-semester-berjalan" min="1" max="14">
-    </div>
-    <div class="segmented mt12" id="ob-sem-seg">
-      <button data-v="awal" class="active">Awal Semester</button>
-      <button data-v="jalan">Udah Jalan</button>
-    </div>
-    
-    <div id="ob-sem-area-awal" class="mt12 stack gap12" style="width:100%;">
-      <div class="field">
-        <label>Tanggal Mulai Semester</label>
-        <input type="date" id="ob-mulai">
-      </div>
-      <div class="banner">
-        ${svg('info')}
-        <span>Selesai dihitung otomatis (~19 minggu, termasuk UTS-UAS). Bisa disesuaikan kembali nanti.</span>
-      </div>
-    </div>
-    
-    <div id="ob-sem-area-jalan" class="mt12 stack gap12 hidden" style="width:100%;">
-      <div class="field" id="ob-mulai-jalan-field">
-        <label>Tanggal Pertama Masuk Semester Ini</label>
-        <input type="date" id="ob-mulai-jalan">
-      </div>
-      <div class="row gap8">
-        <input type="checkbox" id="ob-lupa" style="width:24px;height:24px;">
-        <label for="ob-lupa" class="txt-body" style="font-weight:700;padding-left:4px;">Saya lupa tanggal tepatnya</label>
-      </div>
-      <div class="field hidden" id="ob-tahunwrap">
-        <label>Tahun Masuk Kuliah</label>
-        <input type="number" id="ob-tahunmasuk" min="2015" max="2030">
-      </div>
-      <div class="banner hidden" id="ob-estimasi-banner">
-        ${svg('warn')}
-        <span>Menggunakan perkiraan kalender akademik umum. Sesuaikan kapan saja di Pengaturan.</span>
-      </div>
-    </div>
-  `;
-  c.appendChild(wrap);
-  fitFlowTitle($('.flow-title-large', wrap));
-  
-  const seg = $('#ob-sem-seg', wrap);
-  const areaAwal = $('#ob-sem-area-awal', wrap);
-  const areaJalan = $('#ob-sem-area-jalan', wrap);
-  const p = DB.data.profile;
-  
-  // Set initial values
-  $('#ob-semester-berjalan', wrap).value = p.semesterSekarang || 1;
-  $('#ob-mulai', areaAwal).value = p.tanggalMulaiSemester || todayISO();
-  $('#ob-mulai-jalan', areaJalan).value = p.tanggalMulaiSemester || todayISO();
-  $('#ob-tahunmasuk', areaJalan).value = new Date().getFullYear();
-  
-  function setMode(mode){
-    OB.editSemesterMode = mode;
-    $$('button', seg).forEach(b => b.classList.toggle('active', b.dataset.v === mode));
-    if (mode === 'awal') {
-      areaAwal.classList.remove('hidden');
-      areaJalan.classList.add('hidden');
-    } else {
-      areaAwal.classList.add('hidden');
-      areaJalan.classList.remove('hidden');
-    }
-  }
-  
-  seg.addEventListener('click', e => {
-    const b = e.target.closest('button');
-    if(b) setMode(b.dataset.v);
-  });
-  
-  setMode('awal');
-  
-  const chkLupa = $('#ob-lupa', areaJalan);
-  const tahunWrap = $('#ob-tahunwrap', areaJalan);
-  const bannerEstimasi = $('#ob-estimasi-banner', areaJalan);
-  const f1 = $('#ob-mulai-jalan-field', areaJalan);
-  
-  chkLupa.addEventListener('change', (e) => {
-    const checked = e.target.checked;
-    tahunWrap.classList.toggle('hidden', !checked);
-    bannerEstimasi.classList.toggle('hidden', !checked);
-    f1.classList.toggle('hidden', checked);
-  });
-  
-  stepFooterOnboard(wrap, () => {
-    p.semesterSekarang = Number($('#ob-semester-berjalan', wrap).value) || 1;
-    if (OB.editSemesterMode === 'awal') {
-      const mulai = $('#ob-mulai', areaAwal).value;
-      if(!mulai){ showSnackbar('Tentukan tanggal mulai'); return; }
-      p.tanggalMulaiSemester = mulai;
-      p.tanggalSelesaiSemester = estimasiTanggalSelesai(mulai);
-      p.isEstimasi = true;
-    } else {
-      const lupa = chkLupa.checked;
-      if(lupa){
-        const tahun = Number($('#ob-tahunmasuk', areaJalan).value);
-        p.tanggalPertamaKuliahUser = tahun + '-08-01';
-        p.tanggalMulaiSemester = estimasiMulaiSemesterDariTahunMasuk(tahun);
-        p.tanggalSelesaiSemester = estimasiTanggalSelesai(p.tanggalMulaiSemester);
-        p.isEstimasi = true;
-      } else {
-        const mulai = $('#ob-mulai-jalan', areaJalan).value;
-        if(!mulai){ showSnackbar('Pilih tanggalnya terlebih dahulu'); return; }
-        p.tanggalMulaiSemester = mulai;
-        p.tanggalSelesaiSemester = estimasiTanggalSelesai(mulai);
-        p.isEstimasi = false;
-      }
-    }
-    dbSaveDebounced();
-    obAdvanceAfterEdit(3);
-  });
-}
-function obStep3(c){
+  // Ini adalah obStep3 versi lama (Mata Kuliah)
   const wrap = el('div', 'onboard-step-container animate-slide-up');
   wrap.innerHTML = `
     <h2 class="flow-title-large">Mata kuliah yang kamu ambil semester ini</h2>
-    <p class="flow-subtitle">Tambahkan satu persatu kelas yang kamu jalani saat ini.</p>
+    <p class="flow-subtitle">Tambahkan kelas yang kamu jalani. Bisa ditambah lagi nanti.</p>
     <div class="stack gap12 mt12" id="ob-matkul-list" style="width:100%;"></div>
   `;
   c.appendChild(wrap);
   fitFlowTitle($('.flow-title-large', wrap));
   const list = $('#ob-matkul-list', wrap);
-  
+
   function renderList(){
     list.innerHTML='';
     OB.tempMatkul.forEach((m,idx)=>{
@@ -1635,11 +1517,12 @@ function obStep3(c){
     list.appendChild(addBtn);
   }
   renderList();
-  
+
   stepFooterOnboard(wrap, ()=>{
     if(OB.tempMatkul.length===0){ showSnackbar('Tambahkan minimal satu kelas'); return; }
     DB.data.matkul = OB.tempMatkul.map(m=>({ id:uid(), namaLengkap:m.namaLengkap, hari:m.hari, jamMulai:m.jamMulai, jamSelesai:m.jamSelesai, modeDefault:m.modeDefault, limitAbsenKhusus:null, arsip:false }));
-    dbSaveDebounced(); obAdvanceAfterEdit(4);
+    dbSaveDebounced();
+    obAdvanceAfterEdit(3);
   });
 }
 function openTambahMatkulSheet(onAdd){
@@ -1670,98 +1553,32 @@ function openTambahMatkulSheet(onAdd){
     body.appendChild(btn);
   }, {title:''});
 }
-function obStep4(c){
+function obStep3(c){
   const wrap = el('div', 'onboard-step-container animate-slide-up');
   wrap.innerHTML = `
-    <h2 class="flow-title-large">Gimana aturan absen di kampus kamu?</h2>
-    <p class="flow-subtitle">Berapa batas maksimal tidak masuk kuliah di kampus kamu?</p>
-    <div class="field mt12" style="width:100%;">
-      <label>Limit Absen Umum (Bawaan)</label>
-      <input type="number" id="ob-limit-val" min="0" value="${DB.data.settings.limitAbsenUmum || 3}">
+    <div style="margin-top: 40px; color: var(--clr-primary);">${svg('check', 'icon')}</div>
+    <h2 class="flow-title-large" style="margin-top:16px;">Semua udah siap, gas pakai sekarang!</h2>
+    <p class="flow-subtitle mt8">Kalender akademik otomatis dihitung mulai hari ini. Jika butuh penyesuaian khusus (seperti batas absen tiap matkul), kamu bisa atur belakangan di menu <b>Pengaturan</b>.</p>
+    <div class="flow-footer-actions" style="margin-top:32px;">
+      <button class="btn btn-filled statelayer" id="btn-ob-finish" style="height:52px;font-size:16px;width:100%;">Mulai Gunakan Absenku</button>
     </div>
-    <div class="row gap8 mt12">
-      <input type="checkbox" id="ob-ada-exc" style="width:24px;height:24px;">
-      <label for="ob-ada-exc" class="txt-body" style="font-weight:700;padding-left:4px;">Ada limit khusus untuk kelas tertentu</label>
-    </div>
-    <div id="ob-exc-area" class="stack gap12 mt12 hidden" style="width:100%;"></div>
   `;
   c.appendChild(wrap);
   fitFlowTitle($('.flow-title-large', wrap));
-  
-  const inp = $('#ob-limit-val', wrap);
-  const excArea = $('#ob-exc-area', wrap);
-  const toggleWrap = $('#ob-ada-exc', wrap);
-  
-  const chipRow = el('div','chip-row'); excArea.appendChild(chipRow);
-  DB.data.matkul.forEach(m=>{
-    const chip = el('button','chip', m.namaLengkap);
-    chip.onclick = ()=>{
-      chip.classList.toggle('selected');
-      const already = $('#exc-input-'+m.id);
-      if(chip.classList.contains('selected') && !already){
-        const f2 = el('div','field'); f2.id='exc-input-'+m.id; f2.innerHTML='<label>Limit khusus '+m.namaLengkap+'</label>';
-        const inp2 = el('input'); inp2.type='number'; inp2.min=0; inp2.value=3; inp2.dataset.matkul=m.id;
-        f2.appendChild(inp2); excArea.appendChild(f2);
-      } else if(already){ already.remove(); }
-    };
-    chipRow.appendChild(chip);
-  });
-  
-  toggleWrap.addEventListener('change', e=> excArea.classList.toggle('hidden', !e.target.checked));
-  
-  stepFooterOnboard(wrap, ()=>{
-    DB.data.settings.limitAbsenUmum = Number(inp.value)||0;
-    DB.data.matkul.forEach(m=>{
-      const custom = $('input[data-matkul="'+m.id+'"]', excArea);
-      m.limitAbsenKhusus = custom? Number(custom.value): null;
-    });
-    dbSaveDebounced(); obAdvanceAfterEdit(5);
-  });
-}
-function obStep5(c){
-  const wrap = el('div', 'onboard-step-container animate-slide-up');
-  wrap.innerHTML = `
-    <h2 class="flow-title-large">Semua data kamu udah siap, langsung gas!</h2>
-    <p class="flow-subtitle">Mari cek kembali data kamu sebelum masuk aplikasi.</p>
-    <div class="stack gap12 mt8" id="ob-recap-host" style="width:100%;"></div>
-  `;
-  c.appendChild(wrap);
-  fitFlowTitle($('.flow-title-large', wrap));
-  const host = $('#ob-recap-host', wrap);
-  const p = DB.data.profile;
-  
-  const s1 = el('div','card card-pop');
-  s1.innerHTML = '<div class="row between"><div class="txt-title-sm">Profil</div><button class="btn-text statelayer" id="edit1">Ubah</button></div>'+
-    '<div class="txt-body muted mt8"><b>'+p.nama+'</b> • '+p.nim+'<br>'+p.jurusan+', '+p.universitas+'<br>Semester '+p.semesterSekarang+'</div>';
-  host.appendChild(s1);
-  const s2 = el('div','card card-pop');
-  s2.innerHTML = '<div class="row between"><div class="txt-title-sm">Semester</div><button class="btn-text statelayer" id="edit2">Ubah</button></div>'+
-    '<div class="txt-body muted mt8"><b>'+fmtTanggalPanjang(p.tanggalMulaiSemester)+'</b> s.d. <b>'+fmtTanggalPanjang(p.tanggalSelesaiSemester)+'</b></div>';
-  host.appendChild(s2);
-  const s3 = el('div','card card-pop');
-  s3.innerHTML = '<div class="row between"><div class="txt-title-sm">Mata Kuliah ('+DB.data.matkul.length+')</div><button class="btn-text statelayer" id="edit3">Ubah</button></div>'+
-    '<div class="txt-body muted mt8">'+DB.data.matkul.map(m=>'<b>'+m.namaLengkap+'</b> ('+m.hari.slice(0,3)+')').join(', ')+'</div>';
-  host.appendChild(s3);
-  const s4 = el('div','card card-pop');
-  s4.innerHTML = '<div class="row between"><div class="txt-title-sm">Batas Absensi</div><button class="btn-text statelayer" id="edit4">Ubah</button></div>'+
-    '<div class="txt-body muted mt8">Limit umum: <b>'+DB.data.settings.limitAbsenUmum+'</b> kali pertemuan</div>';
-  host.appendChild(s4);
-  
-  s1.querySelector('#edit1').onclick=()=>obEditStep(1);
-  s2.querySelector('#edit2').onclick=()=>obEditStep(2);
-  s3.querySelector('#edit3').onclick=()=>obEditStep(3);
-  s4.querySelector('#edit4').onclick=()=>obEditStep(4);
-  
-  const btn = el('button','flow-btn-choice primary statelayer mt16'); btn.style.width='100%';
-  btn.innerHTML = '<span>Mulai Sekarang</span>'+svg('arrowR');
-  btn.onclick = ()=>{
+  $('#btn-ob-finish', wrap).onclick = ()=>{
+    // Auto-setup calendar in the background
+    const p = DB.data.profile;
+    if(!p.tanggalMulaiSemester) {
+      p.tanggalMulaiSemester = todayISO();
+      p.tanggalSelesaiSemester = estimasiTanggalSelesai(todayISO());
+      p.isEstimasi = true;
+    }
     DB.data.appState.sudahOnboarding = true;
     DB.data.appState.qcBisukanTanggal = todayISO();
     dbSave();
     NAV.stack = [];
     bootMain();
   };
-  host.appendChild(btn);
 }
 function startOnboarding(){
   OB.step=1; OB.tempMatkul = DB.data.matkul.length? DB.data.matkul.map(m=>({...m})) : [];
