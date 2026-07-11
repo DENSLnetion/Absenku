@@ -1822,18 +1822,18 @@ function renderDashboard(){
   function renderRadarCard(){
     const c = radarCards[radarIndex];
 
-    // Terapkan premium background: 60fps Anti-Lag (Tanpa SVG Noise) & Universal Glow
+    // Terapkan premium background: Cahaya lebih soft dan natural
     containerEl.style.background = `
-      radial-gradient(circle at 90% -10%, rgba(255,255,255,0.6) 0%, transparent 80%), 
-      radial-gradient(circle at 0% 120%, color-mix(in srgb, ${c.fg} 15%, transparent) 0%, transparent 70%), 
-      linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 70%), 
+      radial-gradient(circle at 90% -10%, rgba(255,255,255,0.25) 0%, transparent 80%), 
+      radial-gradient(circle at 0% 120%, color-mix(in srgb, ${c.fg} 10%, transparent) 0%, transparent 70%), 
+      linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%), 
       ${c.bg}
     `;
     containerEl.style.color = c.fg;
 
-    // Terapkan Glass Edge Bevel
-    containerEl.style.boxShadow = 'inset 0 2px 4px rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.1), 0 12px 24px rgba(0,0,0,0.1)';
-    containerEl.style.border = `1px solid color-mix(in srgb, ${c.fg} 20%, transparent)`;
+    // Terapkan Glass Edge Bevel yang lebih halus
+    containerEl.style.boxShadow = 'inset 0 1.5px 2px rgba(255,255,255,0.25), inset 0 -1.5px 2px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.08)';
+    containerEl.style.border = `1px solid color-mix(in srgb, ${c.fg} 12%, transparent)`;
 
     const count = c.list ? c.list.length : 0;
     const badgeCfg = STATUS_BADGE[c.status] || null;
