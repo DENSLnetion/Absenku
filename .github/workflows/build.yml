@@ -28,6 +28,13 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Inject Notifications & Bundle JS
+        run: |
+          npm install @capacitor/local-notifications esbuild
+          echo "import { LocalNotifications } from '@capacitor/local-notifications'; window.LocalNotifications = LocalNotifications;" > www/js/inject.js
+          cat www/js/app.js >> www/js/inject.js
+          npx esbuild www/js/inject.js --bundle --outfile=www/js/app.js --allow-overwrite
+
       - name: Initialize Capacitor Android
         run: |
           npx cap add android
@@ -37,10 +44,8 @@ jobs:
         run: |
           MANIFEST=android/app/src/main/AndroidManifest.xml
           
-          # 1. Tambah permission WRITE + READ storage
-          # WRITE_EXTERNAL_STORAGE wajib untuk nulis ke folder Downloads (Android <= 9)
-          # Android 10+ pakai scoped storage tapi Capacitor Filesystem tetap butuh ini sebagai fallback
-          sed -i 's|<application|<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>\n    <application|' $MANIFEST
+          # 1. Tambah permission Storage & Notifications (Alarm + Post Notif)
+          sed -i 's|<application|<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>\n    <application|' $MANIFEST
           
           # 2. Injeksi usesCleartextTraffic="true" ke dalam tag <application>
           # Ini wajib biar API Archive.org (yang kadang lempar http biasa) ga diblokir Android 9+
