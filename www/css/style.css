@@ -2,7 +2,7 @@
   --shape-xs:6px; --shape-sm:12px; --shape-md:18px; --shape-lg:28px; --shape-xl:36px; --shape-full:999px;
   --ease-emph:cubic-bezier(0.2,0,0,1); --ease-emph-decel:cubic-bezier(0.05,0.7,0.1,1); --ease-emph-accel:cubic-bezier(0.3,0,0.8,0.15);
   --dur-s:180ms; --dur-m:280ms; --dur-l:380ms;
-  --sat:max(env(safe-area-inset-top), 42px); --sab:max(env(safe-area-inset-bottom), 24px);
+  --sat:env(safe-area-inset-top, 0px); --sab:env(safe-area-inset-bottom, 0px);
   --sal:env(safe-area-inset-left,0px); --sar:env(safe-area-inset-right,0px);
   --font-display:'Google Sans','Segoe UI',system-ui,-apple-system,sans-serif;
   --font-body:'Google Sans Text','Segoe UI',system-ui,-apple-system,sans-serif;
