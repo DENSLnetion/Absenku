@@ -1069,6 +1069,36 @@ function openSheet(buildFn, opts){
   scrim.classList.add('show');
   scrim.onclick = ()=> navPop();
   if(fullscreen){ $('.sheet-fs-close',sheet).onclick = ()=> navPop(); }
+  sheet.addEventListener('click', (e) => { e.stopPropagation(); });
+
+  let startY = 0, currentY = 0, isDragging = false;
+  const sheetHandle = sheet.querySelector('.sheet-handle') || sheet;
+  sheetHandle.addEventListener('touchstart', (e) => {
+    if(fullscreen) return; // Jangan drag fullscreen sheet
+    startY = e.touches[0].clientY;
+    isDragging = true;
+    sheet.style.transition = 'none';
+  }, {passive: true});
+  sheet.addEventListener('touchmove', (e) => {
+    if (!isDragging || fullscreen) return;
+    const y = e.touches[0].clientY;
+    currentY = Math.max(0, y - startY); // Cegah swipe up, izinkan swipe down
+    if(currentY > 0) {
+      sheet.style.transform = `translateY(${currentY}px)`;
+    }
+  }, {passive: true});
+  sheet.addEventListener('touchend', (e) => {
+    if (!isDragging || fullscreen) return;
+    isDragging = false;
+    sheet.style.transition = 'transform var(--dur-m) var(--ease-emph)';
+    if (currentY > sheet.clientHeight * 0.3) {
+      navPop(); // Tutup
+    } else {
+      sheet.style.transform = 'translateY(0)'; // Kembalikan
+    }
+    currentY = 0;
+  });
+
   requestAnimationFrame(()=>sheet.classList.add('show'));
   navPush({type:'sheet', close:closeSheet});
   return { el:sheet, close:closeSheet, refresh:(fn)=>{ body.innerHTML=''; fn(body,closeSheet); } };
@@ -3285,10 +3315,23 @@ function openRiwayatDetail(r){
 function openEditRiwayat(r){
   openSheet((body)=>{
     body.appendChild(el('h3','txt-title mt8','Ubah Laporan'));
-    body.appendChild(el('div','txt-body muted mt8', r.inputLama ? 'Data Lama (Input Manual)' : fmtTanggalPanjang(r.tanggal)));
+    const isDataLama = r.inputLama === true || r.alasan === 'data_lama';
+    if (isDataLama) {
+      const tglWrap = el('div','field mt16');
+      tglWrap.innerHTML = '<label>Ubah Tanggal (Data Lama)</label>';
+      const inpTgl = el('input'); inpTgl.type = 'date'; inpTgl.value = r.tanggal;
+      inpTgl.addEventListener('change', () => r.tanggal = inpTgl.value);
+      tglWrap.appendChild(inpTgl);
+      body.appendChild(tglWrap);
+    } else {
+      body.appendChild(el('div','txt-body muted mt8', fmtTanggalPanjang(r.tanggal)));
+    }
     const chipRow = el('div','chip-row mt16');
     ['izin','sakit','bolos'].forEach(a=>{
-      const chip = el('button','chip '+a+(r.alasan===a?' selected':''), a[0].toUpperCase()+a.slice(1));
+      // Data lama diperlakukan seperti data normal saat mengedit
+      const isSelected = r.alasan === a || (isDataLama && r.alasan === 'data_lama' && a === 'bolos'); // default bolos jika belum dipilih
+      if (isSelected && isDataLama) r.alasan = a; // Paksa ubah alasan data lama ke alasan reguler
+      const chip = el('button','chip '+a+(isSelected?' selected':''), a[0].toUpperCase()+a.slice(1));
       chip.style.border = 'none';
       chip.style.fontWeight = '700';
       chip.onclick = ()=>{ r.alasan=a; $$('.chip',chipRow).forEach(x=>x.classList.remove('selected')); chip.classList.add('selected'); };
@@ -3300,7 +3343,6 @@ function openEditRiwayat(r){
     body.appendChild(ta);
 
     const actionRow = el('div','row gap12 mt24');
-    const isDataLama = r.inputLama === true || r.alasan === 'data_lama';
     const btnSimpan = el('button','btn btn-filled statelayer', 'Simpan');
     btnSimpan.onclick=()=>{ dbSaveDebounced(); navPop(); syncActiveTabUI(); showSnackbar('Laporan berhasil diperbarui'); };
 
@@ -3316,7 +3358,7 @@ function openEditRiwayat(r){
         r.sudahDikirimWA = true;
         dbSaveDebounced();
         navPop();
-        renderRiwayat();
+        syncActiveTabUI();
       };
       btnKirim.style.flex = '1';
       btnSimpan.style.flex = '1';
