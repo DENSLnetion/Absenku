@@ -1,0 +1,15 @@
+{
+  "appId": "com.absenku.app",
+  "appName": "Absenku",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": true
+    },
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "Filesystem": {}
+  }
+}
