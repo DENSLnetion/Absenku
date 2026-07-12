@@ -1924,7 +1924,7 @@ function openDetailProgressMatkul(matkulId) {
         };
         DB.data.riwayatAbsen.push(entry);
         dbSaveDebounced();
-        renderDashboard();
+        syncActiveTabUI();
         renderContent();
       };
 
@@ -1935,7 +1935,7 @@ function openDetailProgressMatkul(matkulId) {
         const target = candidates[0];
         target.dihapusPada = Date.now();
         dbSaveDebounced();
-        renderDashboard();
+        syncActiveTabUI();
         renderContent();
       };
 
@@ -1969,7 +1969,7 @@ function openDetailProgressMatkul(matkulId) {
             <button class="btn-icon statelayer btn-quick-delete" data-id="${r.id}" style="width:40px;height:40px;color:var(--clr-error);">${svg('trash')}</button>
           </div>
         `;
-        card.onclick = () => { haptic(); navPop(); setTimeout(() => openEditRiwayat(r), 350); };
+        card.onclick = () => { haptic(); openEditRiwayat(r); };
         $('.btn-quick-delete', card).onclick = (e) => {
           e.stopPropagation();
           showDialog({
@@ -1981,7 +1981,7 @@ function openDetailProgressMatkul(matkulId) {
                 haptic();
                 r.dihapusPada = Date.now();
                 dbSaveDebounced();
-                renderDashboard();
+                syncActiveTabUI();
                 renderContent();
                 showSnackbar('Catatan dihapus');
               }}
@@ -3285,6 +3285,7 @@ function openRiwayatDetail(r){
 function openEditRiwayat(r){
   openSheet((body)=>{
     body.appendChild(el('h3','txt-title mt8','Ubah Laporan'));
+    body.appendChild(el('div','txt-body muted mt8', r.inputLama ? 'Data Lama (Input Manual)' : fmtTanggalPanjang(r.tanggal)));
     const chipRow = el('div','chip-row mt16');
     ['izin','sakit','bolos'].forEach(a=>{
       const chip = el('button','chip '+a+(r.alasan===a?' selected':''), a[0].toUpperCase()+a.slice(1));
@@ -3299,20 +3300,29 @@ function openEditRiwayat(r){
     body.appendChild(ta);
 
     const actionRow = el('div','row gap12 mt24');
-    const btnKirim = el('button','btn btn-tonal statelayer');
-    btnKirim.innerHTML = svg('send')+'<span>'+(r.sudahDikirimWA ? 'Kirim Ulang' : 'Kirim ke PJ')+'</span>';
-    btnKirim.onclick = () => {
-      haptic();
-      kirimWA(generatePesanWA([r]));
-      r.sudahDikirimWA = true;
-      dbSaveDebounced();
-      navPop();
-      renderRiwayat();
-    };
-    const btnSimpan = el('button','btn btn-filled statelayer', 'Simpan'); btnSimpan.style.flex = '1';
-    btnSimpan.onclick=()=>{ dbSaveDebounced(); navPop(); renderRiwayat(); showSnackbar('Laporan berhasil diperbarui'); };
-    actionRow.appendChild(btnKirim);
-    actionRow.appendChild(btnSimpan);
+    const isDataLama = r.inputLama === true || r.alasan === 'data_lama';
+    const btnSimpan = el('button','btn btn-filled statelayer', 'Simpan');
+    btnSimpan.onclick=()=>{ dbSaveDebounced(); navPop(); syncActiveTabUI(); showSnackbar('Laporan berhasil diperbarui'); };
+
+    if (isDataLama) {
+      btnSimpan.style.width = '100%';
+      actionRow.appendChild(btnSimpan);
+    } else {
+      const btnKirim = el('button','btn btn-tonal statelayer');
+      btnKirim.innerHTML = svg('send')+'<span>'+(r.sudahDikirimWA ? 'Kirim Ulang' : 'Kirim ke PJ')+'</span>';
+      btnKirim.onclick = () => {
+        haptic();
+        kirimWA(generatePesanWA([r]));
+        r.sudahDikirimWA = true;
+        dbSaveDebounced();
+        navPop();
+        renderRiwayat();
+      };
+      btnKirim.style.flex = '1';
+      btnSimpan.style.flex = '1';
+      actionRow.appendChild(btnKirim);
+      actionRow.appendChild(btnSimpan);
+    }
     body.appendChild(actionRow);
   },{title:''});
 }
@@ -3783,19 +3793,21 @@ function renderQuickCheck(){
   if (semuaHabisJatah) {
     const root = $('#scr-quickcheck'); root.innerHTML = '';
     const wrap = el('div', 'flow-body-content scroll-y');
-    wrap.style.cssText = 'display:flex;flex-direction:column;justify-content:flex-start;padding:calc(64px + var(--sat)) 24px 32px;flex:1;background:var(--clr-error);color:var(--clr-on-error);';
+    // HARDCODE warna merah darah pekat & padding rata atas
+    wrap.style.cssText = 'display:flex;flex-direction:column;justify-content:flex-start;padding:calc(64px + var(--sat)) 24px 32px;flex:1;background:#8A0000;color:#FFFFFF;';
     wrap.innerHTML = `
-      <h1 style="text-align:left;font-family:var(--font-display);font-size:clamp(36px, 10vw, 46px);font-weight:900;line-height:1.05;letter-spacing:-1px;text-transform:uppercase;margin-bottom:40px;">
-        Hari ini tolong pastikan untuk hadir. Karena semua jatah absen mu di hari ini telah habis.
+      <h1 style="text-align:left;font-family:var(--font-display);font-size:clamp(44px, 14vw, 64px);font-weight:900;line-height:1.05;letter-spacing:-1.5px;text-transform:uppercase;margin-bottom:auto;word-break:break-word;">
+        HARI INI TOLONG PASTIKAN UNTUK HADIR. KARENA SEMUA JATAH ABSEN MU DI HARI INI TELAH HABIS.
       </h1>
-      <button class="flow-btn-choice statelayer mt24" id="btn-qc-kritis-ok" style="background:var(--clr-on-error);color:var(--clr-error);border:none;justify-content:center;text-align:center;">
-        Saya Mengerti & Akan Hadir
+      <button class="flow-btn-choice statelayer" id="btn-kritis-paham" style="background:#FFFFFF;color:#8A0000;border:none;width:100%;border-radius:64px;justify-content:center;text-align:center;margin-top:40px;min-height:72px;font-size:18px;">
+        <span>Saya Mengerti & Akan Hadir</span>
       </button>
     `;
     root.appendChild(wrap);
-    $('#btn-qc-kritis-ok', wrap).onclick = () => {
+    $('#btn-kritis-paham', wrap).onclick = () => {
       haptic();
-      DB.data.appState.qcSelesaiTanggal = todayIso;
+      DB.data.appState.qcSelesaiTanggal = todayISO();
+      dbSaveDebounced();
       navPop();
       finishQuickCheck();
     };
