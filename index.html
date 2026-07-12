@@ -1067,9 +1067,8 @@ function openSheet(buildFn, opts){
     setTimeout(()=>sheet.remove(),320);
   }
   scrim.classList.add('show');
-  scrim.onclick = ()=> navPop();
+  scrim.onclick = (e) => { if (e.target === scrim) { navPop(); } };
   if(fullscreen){ $('.sheet-fs-close',sheet).onclick = ()=> navPop(); }
-  sheet.addEventListener('click', (e) => { e.stopPropagation(); });
 
   let startY = 0, currentY = 0, isDragging = false;
   const sheetHandle = sheet.querySelector('.sheet-handle') || sheet;
@@ -3838,7 +3837,7 @@ function renderQuickCheck(){
     // HARDCODE warna merah darah pekat & padding rata atas
     wrap.style.cssText = 'display:flex;flex-direction:column;justify-content:flex-start;padding:calc(64px + var(--sat)) 24px 32px;flex:1;background:#8A0000;color:#FFFFFF;';
     wrap.innerHTML = `
-      <h1 style="text-align:left;font-family:var(--font-display);font-size:clamp(44px, 14vw, 64px);font-weight:900;line-height:1.05;letter-spacing:-1.5px;text-transform:uppercase;margin-bottom:auto;word-break:break-word;">
+      <h1 style="text-align:left;font-family:var(--font-display);font-size:clamp(32px, 11vw, 42px);font-weight:900;line-height:1.15;letter-spacing:-1.5px;text-transform:uppercase;margin-bottom:auto;word-break:break-word;">
         HARI INI TOLONG PASTIKAN UNTUK HADIR. KARENA SEMUA JATAH ABSEN MU DI HARI INI TELAH HABIS.
       </h1>
       <button class="flow-btn-choice statelayer" id="btn-kritis-paham" style="background:#FFFFFF;color:#8A0000;border:none;width:100%;border-radius:64px;justify-content:center;text-align:center;margin-top:40px;min-height:72px;font-size:18px;">
