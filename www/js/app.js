@@ -146,8 +146,53 @@ async function dbLoad(){
   }catch(e){ DB.data = def; }
 }
 let saveTimer=null;
+async function updateAlarms() {
+  if (!window.LocalNotifications) return;
+  try {
+    const perm = await window.LocalNotifications.requestPermissions();
+    if (perm.display !== 'granted') return;
+    
+    const pending = await window.LocalNotifications.getPending();
+    if (pending.notifications.length > 0) {
+      await window.LocalNotifications.cancel({ notifications: pending.notifications });
+    }
+    
+    const notifs = []; let nId = 1; const now = new Date();
+    
+    for (let i = 0; i < 7; i++) {
+      const tIso = addDays(todayISO(), i);
+      const tDate = parseISO(tIso);
+      const jdw = jadwalEfektifTanggal(tIso);
+      
+      if (jdw.length > 0) {
+        let mTime = new Date(tDate); mTime.setHours(6, 30, 0, 0);
+        if (mTime > now) {
+          let text = jdw.map(j => {
+             const m = matkulById(j.matkulId);
+             return m ? `${m.namaLengkap} (Sisa ${limitUntukMatkul(m) - absenTerpakaiUntukMatkul(m.id)}x)` : '';
+          }).filter(Boolean).join(', ');
+          notifs.push({ id: nId++, title: 'Jadwal Kuliah Hari Ini 📚', body: text, schedule: { at: mTime } });
+        }
+        
+        const bIso = addDays(tIso, 1);
+        const jBesok = jadwalEfektifTanggal(bIso);
+        if (jBesok.length > 0) {
+          let maxS = 0; jdw.forEach(j => { const end = hmToMin(j.jamSelesai); if (end > maxS) maxS = end; });
+          let eTime = new Date(tDate); eTime.setHours(Math.floor(maxS/60) + 2, maxS % 60, 0, 0);
+          if (eTime.getHours() > 21) eTime.setHours(20, 0, 0, 0);
+          if (eTime > now) {
+            notifs.push({ id: nId++, title: 'Siap-siap untuk besok! 🚀', body: `Ada ${jBesok.length} kelas besok. Jangan lupa istirahat!`, schedule: { at: eTime } });
+          }
+        }
+      }
+    }
+    if (notifs.length > 0) await window.LocalNotifications.schedule({ notifications: notifs });
+  } catch (e) { console.warn('Gagal set notif:', e); }
+}
+
 async function dbSave(){
   try{ await idbSet(IDB_KEY, DB.data); }catch(e){ console.warn('gagal nyimpen data', e); }
+  updateAlarms();
 }
 function dbSaveDebounced(){ clearTimeout(saveTimer); saveTimer=setTimeout(dbSave,120); }
 
@@ -3499,6 +3544,7 @@ function initPhysicsInteractions(){
 
 async function initApp(){
   await dbLoad();
+  updateAlarms();
   applyTheme();
   wireNav();
   initTabSwipe();
