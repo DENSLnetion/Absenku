@@ -60,9 +60,21 @@ jobs:
           mkdir -p android/app/src/main/java/com/absenku/app
           cat << 'EOF' > android/app/src/main/java/com/absenku/app/MainActivity.java
           package com.absenku.app;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
           import com.getcapacitor.BridgeActivity;
           
-          public class MainActivity extends BridgeActivity {}
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onResume() {
+                  super.onResume();
+                  WebView webView = this.bridge.getWebView();
+                  if (webView != null) {
+                      WebSettings settings = webView.getSettings();
+                      settings.setTextZoom(100);
+                  }
+              }
+          }
           EOF
 
       - name: Download Permanent Keystore
