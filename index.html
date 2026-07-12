@@ -1051,51 +1051,73 @@ function showDialog({title, body, actions}){
 function openSheet(buildFn, opts){
   opts = opts||{};
   const container = $('#sheet-container');
-  const scrim = $('#scrim');
   const fullscreen = !!opts.fullscreen;
+
+  // Dynamic Scrim & Z-Index: hitung tingkat tumpukan berdasarkan jumlah .sheet aktif saat ini
+  const baseZ = 61 + ($$('.sheet').length * 2);
+  const scrim = el('div', 'scrim');
+  scrim.style.zIndex = baseZ;
+
   const sheet = el('div', fullscreen?'sheet fullscreen':'sheet');
+  sheet.style.zIndex = baseZ + 1;
   sheet.innerHTML = fullscreen
     ? '<div class="sheet-fs-topbar"><button class="btn-icon statelayer sheet-fs-close">'+svg('back')+'</button>'+(opts.title? '<h2>'+opts.title+'</h2>':'')+'</div><div class="sheet-body"></div>'
     : '<div class="sheet-handle"></div>' + (opts.title? '<div class="sheet-title">'+opts.title+'</div>':'') + '<div class="sheet-body"></div>';
   const body = $('.sheet-body',sheet);
   buildFn(body, closeSheet);
+  container.appendChild(scrim);
   container.appendChild(sheet);
   if(fullscreen) pushStatusBarLayer('--clr-surface');
   function closeSheet(){
     sheet.classList.remove('show'); scrim.classList.remove('show');
     if(fullscreen) popStatusBarLayer();
-    setTimeout(()=>sheet.remove(),320);
+    setTimeout(()=>{ sheet.remove(); scrim.remove(); },320);
   }
+
+  // Isolasi Klik: scrim baru ini menutupi sheet di bawahnya secara absolut
   scrim.classList.add('show');
-  scrim.onclick = (e) => { if (e.target === scrim) { navPop(); } };
+  scrim.onclick = () => navPop();
   if(fullscreen){ $('.sheet-fs-close',sheet).onclick = ()=> navPop(); }
 
-  let startY = 0, currentY = 0, isDragging = false;
-  const sheetHandle = sheet.querySelector('.sheet-handle') || sheet;
-  sheetHandle.addEventListener('touchstart', (e) => {
-    if(fullscreen) return; // Jangan drag fullscreen sheet
+  // Fisika Real-Time & Responsif: drag pada keseluruhan .sheet, bukan cuma handle
+  let startY = 0, currentY = 0, isDragging = false, lastY = 0, lastTime = 0, velocity = 0;
+  sheet.addEventListener('touchstart', (e) => {
+    if(fullscreen) return;
     startY = e.touches[0].clientY;
-    isDragging = true;
-    sheet.style.transition = 'none';
+    lastY = startY;
+    lastTime = Date.now();
+    velocity = 0;
+    isDragging = false;
   }, {passive: true});
   sheet.addEventListener('touchmove', (e) => {
-    if (!isDragging || fullscreen) return;
+    if(fullscreen) return;
     const y = e.touches[0].clientY;
-    currentY = Math.max(0, y - startY); // Cegah swipe up, izinkan swipe down
-    if(currentY > 0) {
+    const deltaY = y - startY;
+    // Hanya izinkan drag ke bawah jika sheet-body berada di posisi paling atas
+    if(deltaY > 0 && body.scrollTop <= 0){
+      if(!isDragging){ isDragging = true; sheet.style.transition = 'none'; }
+      currentY = deltaY;
       sheet.style.transform = `translateY(${currentY}px)`;
+      const now = Date.now();
+      const dt = now - lastTime;
+      if(dt > 0) velocity = (y - lastY) / dt;
+      lastY = y; lastTime = now;
+    } else if(isDragging){
+      currentY = 0;
+      sheet.style.transform = 'translateY(0px)';
     }
   }, {passive: true});
-  sheet.addEventListener('touchend', (e) => {
-    if (!isDragging || fullscreen) return;
+  sheet.addEventListener('touchend', () => {
+    if(fullscreen || !isDragging){ isDragging = false; return; }
     isDragging = false;
     sheet.style.transition = 'transform var(--dur-m) var(--ease-emph)';
-    if (currentY > sheet.clientHeight * 0.3) {
+    const highVelocity = velocity > 0.5; // px/ms
+    if(currentY > sheet.clientHeight * 0.25 || highVelocity){
       navPop(); // Tutup
     } else {
       sheet.style.transform = 'translateY(0)'; // Kembalikan
     }
-    currentY = 0;
+    currentY = 0; velocity = 0;
   });
 
   requestAnimationFrame(()=>sheet.classList.add('show'));
@@ -3837,12 +3859,14 @@ function renderQuickCheck(){
     // HARDCODE warna merah darah pekat & padding rata atas
     wrap.style.cssText = 'display:flex;flex-direction:column;justify-content:flex-start;padding:calc(64px + var(--sat)) 24px 32px;flex:1;background:#8A0000;color:#FFFFFF;';
     wrap.innerHTML = `
-      <h1 style="text-align:left;font-family:var(--font-display);font-size:clamp(32px, 11vw, 42px);font-weight:900;line-height:1.15;letter-spacing:-1.5px;text-transform:uppercase;margin-bottom:auto;word-break:break-word;">
-        HARI INI TOLONG PASTIKAN UNTUK HADIR. KARENA SEMUA JATAH ABSEN MU DI HARI INI TELAH HABIS.
-      </h1>
-      <button class="flow-btn-choice statelayer" id="btn-kritis-paham" style="background:#FFFFFF;color:#8A0000;border:none;width:100%;border-radius:64px;justify-content:center;text-align:center;margin-top:40px;min-height:72px;font-size:18px;">
-        <span>Saya Mengerti & Akan Hadir</span>
-      </button>
+      <div style="display:flex;flex-direction:column;gap:32px;margin:auto 0;">
+        <h1 style="text-align:left;font-family:var(--font-display);font-size:clamp(38px, 12vw, 52px);font-weight:900;line-height:1.15;letter-spacing:-1.5px;text-transform:uppercase;word-break:break-word;">
+          HARI INI TOLONG PASTIKAN UNTUK HADIR. KARENA SEMUA JATAH ABSEN MU DI HARI INI TELAH HABIS.
+        </h1>
+        <button class="flow-btn-choice statelayer" id="btn-kritis-paham" style="background:#FFFFFF;color:#8A0000;border:none;width:100%;border-radius:64px;justify-content:center;text-align:center;min-height:72px;font-size:18px;">
+          <span>Saya Mengerti & Akan Hadir</span>
+        </button>
+      </div>
     `;
     root.appendChild(wrap);
     $('#btn-kritis-paham', wrap).onclick = () => {
