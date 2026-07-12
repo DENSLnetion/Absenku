@@ -639,18 +639,6 @@ function fitFlowTitle(elm, opts){
       elm.style.fontSize = size + 'px';
       n = countLines();
     }
-  } else if(n < minLines){
-    while(n < minLines && size < growCap){
-      const prevSize = size;
-      size += step;
-      elm.style.fontSize = size + 'px';
-      if(overflowsWidth()){
-        size = prevSize;
-        elm.style.fontSize = size + 'px';
-        break;
-      }
-      n = countLines();
-    }
   }
 }
 function fitFlowTitles(scope){
