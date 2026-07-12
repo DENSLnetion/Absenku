@@ -30,7 +30,7 @@ jobs:
 
       - name: Inject Notifications & Bundle JS
         run: |
-          npm install @capacitor/local-notifications esbuild
+          npm install @capacitor/local-notifications@^6.0.0 esbuild
           echo "import { LocalNotifications } from '@capacitor/local-notifications'; window.LocalNotifications = LocalNotifications;" > www/js/inject.js
           cat www/js/app.js >> www/js/inject.js
           npx esbuild www/js/inject.js --bundle --outfile=www/js/app.js --allow-overwrite
